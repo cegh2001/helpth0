@@ -19,14 +19,15 @@ model Doctor {
 }
 
 model Schedule {
-  id        String   @id @default(cuid())
-  doctorId  String
-  dayOfWeek Int      // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  startTime String   // Format: "HH:mm" (24h)
-  endTime   String   // Format: "HH:mm" (24h)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  id          String       @id @default(cuid())
+  doctorId    String
+  dayOfWeek   Int          // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime   String       // Format: "HH:mm" (24h)
+  endTime     String       // Format: "HH:mm" (24h)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  doctor      Doctor       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  dailyCounts DailyCount[]
 
   @@unique([doctorId, dayOfWeek, startTime])
   @@index([doctorId])
@@ -34,16 +35,19 @@ model Schedule {
 }
 
 model DailyCount {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   doctorId     String
-  date         String   // Format: "YYYY-MM-DD"
-  patientCount Int      @default(0)
+  scheduleId   String?   // Links to specific shift slot if scheduled
+  date         String    // Format: "YYYY-MM-DD"
+  patientCount Int       @default(0)
   notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  doctor       Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  doctor       Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  schedule     Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
 
-  @@unique([doctorId, date])
+  @@unique([doctorId, date, scheduleId])
   @@index([date])
   @@index([doctorId])
+  @@index([scheduleId])
 }

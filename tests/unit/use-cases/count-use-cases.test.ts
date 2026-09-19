@@ -121,4 +121,48 @@ describe('Count and Overview Use Cases', () => {
     const doc2Row = report.doctors.find((d: DoctorReportRow) => d.doctorId === doctor2.id);
     expect(doc2Row?.totalPatients).toBe(10);
   });
+
+  it('should support granular counting across multiple shifts on the same day', async () => {
+    const morningShift = (await scheduleRepo.findByDoctorId(doctor1.id))[0];
+    const afternoonShift = WeeklySchedule.create({
+      doctorId: doctor1.id,
+      dayOfWeek: 1,
+      startTime: '14:00',
+      endTime: '18:00',
+    });
+    await scheduleRepo.save(afternoonShift);
+
+    await recordCountUseCase.execute({
+      doctorId: doctor1.id,
+      scheduleId: morningShift.id,
+      date: '2026-09-21',
+      patientCount: 8,
+      notes: 'Morning shift',
+    });
+
+    await recordCountUseCase.execute({
+      doctorId: doctor1.id,
+      scheduleId: afternoonShift.id,
+      date: '2026-09-21',
+      patientCount: 12,
+      notes: 'Afternoon shift',
+    });
+
+    const overview = await dailyOverviewUseCase.execute('2026-09-21');
+    const doc1 = overview.doctors.find((d) => d.doctorId === doctor1.id);
+
+    expect(doc1?.patientCount).toBe(20);
+    expect(doc1?.shiftSlots.length).toBe(2);
+    expect(doc1?.shiftSlots[0].patientCount).toBe(8);
+    expect(doc1?.shiftSlots[1].patientCount).toBe(12);
+
+    const report = await reportDataUseCase.execute({
+      startDate: '2026-09-21',
+      endDate: '2026-09-21',
+    });
+    const doc1Report = report.doctors.find((d) => d.doctorId === doctor1.id);
+    expect(doc1Report?.dailyBreakdown.length).toBe(2);
+    expect(doc1Report?.dailyBreakdown[0].shiftTime).toBe('08:00 - 14:00');
+    expect(doc1Report?.dailyBreakdown[1].shiftTime).toBe('14:00 - 18:00');
+  });
 });

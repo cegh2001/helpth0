@@ -6,28 +6,37 @@ export class PrismaDailyCountRepository implements DailyCountRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async save(count: DailyPatientCount): Promise<void> {
-    await this.prisma.dailyCount.upsert({
+    const existing = await this.prisma.dailyCount.findFirst({
       where: {
-        doctorId_date: {
-          doctorId: count.doctorId,
-          date: count.date,
-        },
-      },
-      create: {
-        id: count.id,
         doctorId: count.doctorId,
         date: count.date,
-        patientCount: count.patientCount,
-        notes: count.notes,
-        createdAt: count.createdAt,
-        updatedAt: count.updatedAt,
-      },
-      update: {
-        patientCount: count.patientCount,
-        notes: count.notes,
-        updatedAt: count.updatedAt,
+        scheduleId: count.scheduleId || null,
       },
     });
+
+    if (existing) {
+      await this.prisma.dailyCount.update({
+        where: { id: existing.id },
+        data: {
+          patientCount: count.patientCount,
+          notes: count.notes,
+          updatedAt: count.updatedAt,
+        },
+      });
+    } else {
+      await this.prisma.dailyCount.create({
+        data: {
+          id: count.id,
+          doctorId: count.doctorId,
+          scheduleId: count.scheduleId || null,
+          date: count.date,
+          patientCount: count.patientCount,
+          notes: count.notes,
+          createdAt: count.createdAt,
+          updatedAt: count.updatedAt,
+        },
+      });
+    }
   }
 
   async findById(id: string): Promise<DailyPatientCount | null> {
@@ -40,6 +49,7 @@ export class PrismaDailyCountRepository implements DailyCountRepository {
     return DailyPatientCount.create({
       id: raw.id,
       doctorId: raw.doctorId,
+      scheduleId: raw.scheduleId,
       date: raw.date,
       patientCount: raw.patientCount,
       notes: raw.notes,
@@ -49,12 +59,10 @@ export class PrismaDailyCountRepository implements DailyCountRepository {
   }
 
   async findByDoctorAndDate(doctorId: string, date: string): Promise<DailyPatientCount | null> {
-    const raw = await this.prisma.dailyCount.findUnique({
+    const raw = await this.prisma.dailyCount.findFirst({
       where: {
-        doctorId_date: {
-          doctorId,
-          date,
-        },
+        doctorId,
+        date,
       },
     });
 
@@ -63,6 +71,34 @@ export class PrismaDailyCountRepository implements DailyCountRepository {
     return DailyPatientCount.create({
       id: raw.id,
       doctorId: raw.doctorId,
+      scheduleId: raw.scheduleId,
+      date: raw.date,
+      patientCount: raw.patientCount,
+      notes: raw.notes,
+      createdAt: raw.createdAt,
+      updatedAt: raw.updatedAt,
+    });
+  }
+
+  async findByDoctorDateAndSchedule(
+    doctorId: string,
+    date: string,
+    scheduleId?: string | null
+  ): Promise<DailyPatientCount | null> {
+    const raw = await this.prisma.dailyCount.findFirst({
+      where: {
+        doctorId,
+        date,
+        scheduleId: scheduleId || null,
+      },
+    });
+
+    if (!raw) return null;
+
+    return DailyPatientCount.create({
+      id: raw.id,
+      doctorId: raw.doctorId,
+      scheduleId: raw.scheduleId,
       date: raw.date,
       patientCount: raw.patientCount,
       notes: raw.notes,
@@ -80,6 +116,7 @@ export class PrismaDailyCountRepository implements DailyCountRepository {
       DailyPatientCount.create({
         id: r.id,
         doctorId: r.doctorId,
+        scheduleId: r.scheduleId,
         date: r.date,
         patientCount: r.patientCount,
         notes: r.notes,
@@ -104,6 +141,7 @@ export class PrismaDailyCountRepository implements DailyCountRepository {
       DailyPatientCount.create({
         id: r.id,
         doctorId: r.doctorId,
+        scheduleId: r.scheduleId,
         date: r.date,
         patientCount: r.patientCount,
         notes: r.notes,

@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 export interface DailyPatientCountProps {
   id?: string;
   doctorId: string;
+  scheduleId?: string | null;
   date: string; // YYYY-MM-DD
   patientCount: number;
   notes?: string | null;
@@ -15,6 +16,7 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 export class DailyPatientCount {
   readonly id: string;
   readonly doctorId: string;
+  readonly scheduleId: string | null;
   readonly date: string;
   private _patientCount: number;
   private _notes: string | null;
@@ -40,6 +42,7 @@ export class DailyPatientCount {
 
     this.id = props.id || crypto.randomUUID();
     this.doctorId = props.doctorId;
+    this.scheduleId = props.scheduleId || null;
     this.date = props.date;
     this._patientCount = props.patientCount;
     this._notes = props.notes?.trim() || null;

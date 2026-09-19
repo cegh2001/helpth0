@@ -87,15 +87,17 @@ export class ExcelJsReportExporter implements ReportExporterPort {
       { width: 18 },
     ];
 
-    // Hoja 2: Desglose Diario
-    const detailSheet = workbook.addWorksheet('Desglose Diario', {
+    // Hoja 2: Desglose Diario y por Turno
+    const detailSheet = workbook.addWorksheet('Desglose Diario y Turnos', {
       views: [{ showGridLines: true }],
     });
 
     const detailHeader = detailSheet.addRow([
       'Fecha',
+      'Día',
       'Médico',
       'Especialidad',
+      'Turno / Horario',
       'Pacientes Atendidos',
       'Observaciones',
     ]);
@@ -114,19 +116,23 @@ export class ExcelJsReportExporter implements ReportExporterPort {
       for (const item of doc.dailyBreakdown) {
         const row = detailSheet.addRow([
           item.date,
+          item.dayName,
           doc.doctorName,
           doc.specialty,
+          item.shiftTime,
           item.count,
           item.notes || '',
         ]);
-        row.getCell(4).alignment = { horizontal: 'center' };
+        row.getCell(6).alignment = { horizontal: 'center' };
       }
     }
 
     detailSheet.columns = [
-      { width: 16 },
+      { width: 14 },
+      { width: 10 },
       { width: 28 },
-      { width: 24 },
+      { width: 22 },
+      { width: 22 },
       { width: 20 },
       { width: 35 },
     ];

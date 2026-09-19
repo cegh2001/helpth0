@@ -6,6 +6,8 @@ export interface DoctorReportRow {
   totalPatients: number;
   dailyBreakdown: Array<{
     date: string;
+    dayName: string;
+    shiftTime: string;
     count: number;
     notes?: string | null;
   }>;

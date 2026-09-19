@@ -21,6 +21,24 @@ export class InMemoryDailyCountRepository implements DailyCountRepository {
     return null;
   }
 
+  async findByDoctorDateAndSchedule(
+    doctorId: string,
+    date: string,
+    scheduleId?: string | null
+  ): Promise<DailyPatientCount | null> {
+    const targetSchedule = scheduleId || null;
+    for (const record of this.records.values()) {
+      if (
+        record.doctorId === doctorId &&
+        record.date === date &&
+        (record.scheduleId || null) === targetSchedule
+      ) {
+        return record;
+      }
+    }
+    return null;
+  }
+
   async findByDate(date: string): Promise<DailyPatientCount[]> {
     return Array.from(this.records.values()).filter((r) => r.date === date);
   }

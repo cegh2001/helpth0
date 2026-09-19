@@ -147,6 +147,82 @@ export class PdfKitReportExporter implements ReportExporterPort {
           .text('TOTAL GENERAL', 45, y + 6)
           .text(String(data.totalPatientsPeriod), 490, y + 6, { width: 60, align: 'right' });
 
+        y += 40;
+
+        // Si queda poco espacio, agregar página
+        if (y > 620) {
+          doc.addPage({ margin: 40, size: 'A4' });
+          y = 40;
+        }
+
+        doc
+          .fillColor('#0F172A')
+          .fontSize(12)
+          .font('Helvetica-Bold')
+          .text('Desglose Detallado por Fecha y Turno', 40, y);
+
+        y += 20;
+
+        // Encabezado de la tabla de turnos
+        doc
+          .rect(40, y, 515, 22)
+          .fill('#0D9488');
+
+        doc
+          .fillColor('#FFFFFF')
+          .fontSize(9)
+          .font('Helvetica-Bold')
+          .text('Fecha', 45, y + 6)
+          .text('Día', 110, y + 6)
+          .text('Médico', 145, y + 6)
+          .text('Turno', 280, y + 6)
+          .text('Observaciones', 380, y + 6)
+          .text('Pacientes', 490, y + 6, { width: 60, align: 'right' });
+
+        y += 22;
+
+        let hasBreakdownItems = false;
+        let detailAlternate = false;
+
+        for (const docRow of data.doctors) {
+          for (const item of docRow.dailyBreakdown) {
+            hasBreakdownItems = true;
+            if (y > 740) {
+              doc.addPage({ margin: 40, size: 'A4' });
+              y = 40;
+            }
+
+            if (detailAlternate) {
+              doc.rect(40, y, 515, 22).fill('#F8FAFC');
+            }
+
+            doc
+              .fillColor('#1E293B')
+              .fontSize(8.5)
+              .font('Helvetica')
+              .text(item.date, 45, y + 6, { width: 60 })
+              .text(item.dayName, 110, y + 6, { width: 30 })
+              .font('Helvetica-Bold')
+              .text(docRow.doctorName, 145, y + 6, { width: 130, ellipsis: true })
+              .font('Helvetica')
+              .text(item.shiftTime, 280, y + 6, { width: 95, ellipsis: true })
+              .text(item.notes || '—', 380, y + 6, { width: 105, ellipsis: true })
+              .font('Helvetica-Bold')
+              .text(String(item.count), 490, y + 6, { width: 60, align: 'right' });
+
+            y += 22;
+            detailAlternate = !detailAlternate;
+          }
+        }
+
+        if (!hasBreakdownItems) {
+          doc
+            .fillColor('#64748B')
+            .fontSize(9)
+            .font('Helvetica-Oblique')
+            .text('No se registraron atenciones en el período seleccionado.', 45, y + 10);
+        }
+
         // Pie de Página
         doc
           .fontSize(8)

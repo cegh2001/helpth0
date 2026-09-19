@@ -17,8 +17,8 @@ describe('Report Exporters', () => {
         schedulesSummary: 'Mon: 08:00-14:00, Wed: 08:00-14:00',
         totalPatients: 25,
         dailyBreakdown: [
-          { date: '2026-09-01', count: 12, notes: 'Routine checkups' },
-          { date: '2026-09-03', count: 13, notes: null },
+          { date: '2026-09-01', dayName: 'Mar', shiftTime: '08:00 - 14:00', count: 12, notes: 'Routine checkups' },
+          { date: '2026-09-03', dayName: 'Jue', shiftTime: '08:00 - 14:00', count: 13, notes: null },
         ],
       },
       {
@@ -28,8 +28,8 @@ describe('Report Exporters', () => {
         schedulesSummary: 'Tue: 09:00-13:00, Thu: 09:00-13:00',
         totalPatients: 20,
         dailyBreakdown: [
-          { date: '2026-09-02', count: 10, notes: 'Clinic cases' },
-          { date: '2026-09-04', count: 10, notes: null },
+          { date: '2026-09-02', dayName: 'Mié', shiftTime: '09:00 - 13:00', count: 10, notes: 'Clinic cases' },
+          { date: '2026-09-04', dayName: 'Vie', shiftTime: '09:00 - 13:00', count: 10, notes: null },
         ],
       },
     ],

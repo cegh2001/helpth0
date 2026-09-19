@@ -4,6 +4,7 @@ import { DailyCountRepository } from '@/core/domain/repositories/daily-count.rep
 
 export interface RecordPatientCountDTO {
   doctorId: string;
+  scheduleId?: string | null;
   date: string; // YYYY-MM-DD
   patientCount: number;
   notes?: string | null;
@@ -12,6 +13,7 @@ export interface RecordPatientCountDTO {
 export interface PatientCountResponseDTO {
   id: string;
   doctorId: string;
+  scheduleId: string | null;
   date: string;
   patientCount: number;
   notes: string | null;
@@ -31,13 +33,18 @@ export class RecordPatientCountUseCase {
       throw new Error('Doctor not found');
     }
 
-    let record = await this.countRepository.findByDoctorAndDate(dto.doctorId, dto.date);
+    let record = await this.countRepository.findByDoctorDateAndSchedule(
+      dto.doctorId,
+      dto.date,
+      dto.scheduleId
+    );
 
     if (record) {
       record.updateCount(dto.patientCount, dto.notes);
     } else {
       record = DailyPatientCount.create({
         doctorId: dto.doctorId,
+        scheduleId: dto.scheduleId || null,
         date: dto.date,
         patientCount: dto.patientCount,
         notes: dto.notes,
@@ -49,6 +56,7 @@ export class RecordPatientCountUseCase {
     return {
       id: record.id,
       doctorId: record.doctorId,
+      scheduleId: record.scheduleId,
       date: record.date,
       patientCount: record.patientCount,
       notes: record.notes,

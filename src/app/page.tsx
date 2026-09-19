@@ -71,12 +71,22 @@ interface ScheduleItem {
   endTime: string;
 }
 
+interface DoctorShiftSlot {
+  scheduleId: string | null;
+  startTime: string;
+  endTime: string;
+  patientCount: number;
+  notes: string | null;
+  countRecordId: string | null;
+}
+
 interface DoctorOverview {
   doctorId: string;
   doctorName: string;
   specialty: string;
   scheduledToday: boolean;
   schedules: ScheduleItem[];
+  shiftSlots?: DoctorShiftSlot[];
   patientCount: number;
   notes: string | null;
   countRecordId: string | null;
@@ -243,14 +253,35 @@ export default function DashboardPage() {
     );
   }, [overview?.doctors, searchDoctors]);
 
-  // Manejo de conteo de pacientes
-  const handleCountChange = async (doctorId: string, newCount: number, notes?: string | null) => {
+  // Manejo de conteo de pacientes granular por turno
+  const handleCountChange = async (
+    doctorId: string,
+    scheduleId: string | null,
+    newCount: number,
+    notes?: string | null
+  ) => {
     if (newCount < 0) return;
 
     if (overview) {
       const updatedDoctors = overview.doctors.map((d) => {
         if (d.doctorId === doctorId) {
-          return { ...d, patientCount: newCount, notes: notes !== undefined ? notes : d.notes };
+          const updatedSlots = (d.shiftSlots || []).map((slot) => {
+            if ((slot.scheduleId || null) === (scheduleId || null)) {
+              return {
+                ...slot,
+                patientCount: newCount,
+                notes: notes !== undefined ? notes : slot.notes,
+              };
+            }
+            return slot;
+          });
+          const newDocTotal = updatedSlots.reduce((acc, curr) => acc + curr.patientCount, 0);
+          return {
+            ...d,
+            shiftSlots: updatedSlots,
+            patientCount: newDocTotal,
+            notes: notes !== undefined ? notes : d.notes,
+          };
         }
         return d;
       });
@@ -264,6 +295,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           doctorId,
+          scheduleId: scheduleId || null,
           date: selectedDate,
           patientCount: newCount,
           notes: notes,
@@ -714,6 +746,7 @@ export default function DashboardPage() {
                       }`}
                     >
                       <CardContent className="p-5">
+                        {/* Cabecera del Médico */}
                         <div className="flex items-start justify-between">
                           <div>
                             <div className="flex items-center space-x-2 flex-wrap gap-y-1">
@@ -754,63 +787,191 @@ export default function DashboardPage() {
                             </div>
                           </div>
 
-                        {/* Contador de Pacientes */}
-                        <div className="flex flex-col items-end space-y-1">
-                          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                            Pacientes
-                          </span>
-                          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon-sm"
-                              onClick={() =>
-                                handleCountChange(doc.doctorId, Math.max(0, doc.patientCount - 1))
-                              }
-                              title="Restar (-1)"
-                              className="h-8 w-8 rounded-lg cursor-pointer hover:bg-white active:scale-90"
-                            >
-                              <Minus className="w-3.5 h-3.5" />
-                            </Button>
+                          {/* Badge de total si hay múltiples turnos */}
+                          {doc.shiftSlots && doc.shiftSlots.length > 1 && (
+                            <div className="text-right">
+                              <span className="text-2xs font-semibold text-slate-400 uppercase tracking-wider block">
+                                Total Hoy
+                              </span>
+                              <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-bold text-xs mt-0.5">
+                                {doc.patientCount} pac.
+                              </Badge>
+                            </div>
+                          )}
 
-                            <Input
-                              type="number"
-                              min="0"
-                              value={doc.patientCount}
-                              onChange={(e) =>
-                                handleCountChange(doc.doctorId, parseInt(e.target.value) || 0)
-                              }
-                              className="w-14 h-8 text-center font-bold text-base bg-transparent border-0 shadow-none focus-visible:ring-0 p-0"
-                            />
+                          {/* Contador único si tiene 1 turno o sin turno */}
+                          {(!doc.shiftSlots || doc.shiftSlots.length <= 1) && (() => {
+                            const slot = doc.shiftSlots?.[0];
+                            const currentSlotCount = slot ? slot.patientCount : doc.patientCount;
+                            const slotScheduleId = slot ? slot.scheduleId : null;
 
-                            <Button
-                              type="button"
-                              size="icon-sm"
-                              onClick={() => handleCountChange(doc.doctorId, doc.patientCount + 1)}
-                              title="Sumar (+1)"
-                              className="h-8 w-8 rounded-lg cursor-pointer hover:bg-primary/90 active:scale-90"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
+                            return (
+                              <div className="flex flex-col items-end space-y-1">
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                  Pacientes
+                                </span>
+                                <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon-sm"
+                                    onClick={() =>
+                                      handleCountChange(doc.doctorId, slotScheduleId, Math.max(0, currentSlotCount - 1))
+                                    }
+                                    title="Restar (-1)"
+                                    className="h-8 w-8 rounded-lg cursor-pointer hover:bg-white active:scale-90"
+                                  >
+                                    <Minus className="w-3.5 h-3.5" />
+                                  </Button>
+
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={currentSlotCount}
+                                    onChange={(e) =>
+                                      handleCountChange(doc.doctorId, slotScheduleId, parseInt(e.target.value) || 0)
+                                    }
+                                    className="w-14 h-8 text-center font-bold text-base bg-transparent border-0 shadow-none focus-visible:ring-0 p-0"
+                                  />
+
+                                  <Button
+                                    type="button"
+                                    size="icon-sm"
+                                    onClick={() =>
+                                      handleCountChange(doc.doctorId, slotScheduleId, currentSlotCount + 1)
+                                    }
+                                    title="Sumar (+1)"
+                                    className="h-8 w-8 rounded-lg cursor-pointer hover:bg-primary/90 active:scale-90"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
-                      </div>
 
-                      {/* Observaciones */}
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center space-x-2">
-                        <Input
-                          type="text"
-                          placeholder="Observaciones del día (opcional)..."
-                          defaultValue={doc.notes || ''}
-                          onBlur={(e) => {
-                            if (e.target.value !== (doc.notes || '')) {
-                              handleCountChange(doc.doctorId, doc.patientCount, e.target.value);
-                            }
-                          }}
-                          className="h-8 text-xs bg-slate-50/60 focus:bg-white transition"
-                        />
-                      </div>
-                    </CardContent>
+                        {/* Si tiene MÚLTIPLES turnos el mismo día: desglosar cada turno */}
+                        {doc.shiftSlots && doc.shiftSlots.length > 1 && (
+                          <div className="mt-4 pt-3 border-t border-slate-100 space-y-2.5">
+                            <p className="text-2xs font-semibold uppercase tracking-wider text-slate-400">
+                              Registro por Turno ({doc.shiftSlots.length} turnos)
+                            </p>
+                            <div className="space-y-2">
+                              {doc.shiftSlots.map((slot, sIdx) => {
+                                const slotDuty = slot.startTime && slot.endTime
+                                  ? getDoctorDutyStatus([{ startTime: slot.startTime, endTime: slot.endTime }], isSelectedDateToday, currentTime)
+                                  : 'unscheduled';
+
+                                return (
+                                  <div
+                                    key={slot.scheduleId || sIdx}
+                                    className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2 transition hover:bg-slate-50"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-2">
+                                        <Clock className="w-3.5 h-3.5 text-slate-500" />
+                                        <span className="font-mono text-xs font-bold text-slate-800">
+                                          {slot.startTime && slot.endTime
+                                            ? `${slot.startTime} - ${slot.endTime}`
+                                            : 'Consulta fuera de turno'}
+                                        </span>
+                                        {slotDuty === 'on_duty' ? (
+                                          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold text-2xs py-0 px-1.5 hover:bg-emerald-50">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1 inline-block"></span>
+                                            En Turno
+                                          </Badge>
+                                        ) : slotDuty === 'completed' ? (
+                                          <Badge variant="outline" className="bg-amber-50/80 text-amber-700 border-amber-200 text-2xs py-0 px-1.5">
+                                            Concluido
+                                          </Badge>
+                                        ) : slotDuty === 'upcoming' ? (
+                                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-2xs py-0 px-1.5">
+                                            Próximo
+                                          </Badge>
+                                        ) : null}
+                                      </div>
+
+                                      <div className="flex items-center space-x-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-2xs">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon-sm"
+                                          onClick={() =>
+                                            handleCountChange(doc.doctorId, slot.scheduleId, Math.max(0, slot.patientCount - 1))
+                                          }
+                                          title="Restar (-1)"
+                                          className="h-7 w-7 rounded-md cursor-pointer hover:bg-slate-100 active:scale-90"
+                                        >
+                                          <Minus className="w-3 h-3" />
+                                        </Button>
+
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          value={slot.patientCount}
+                                          onChange={(e) =>
+                                            handleCountChange(doc.doctorId, slot.scheduleId, parseInt(e.target.value) || 0)
+                                          }
+                                          className="w-10 h-7 text-center font-bold text-xs bg-transparent border-0 shadow-none focus-visible:ring-0 p-0"
+                                        />
+
+                                        <Button
+                                          type="button"
+                                          size="icon-sm"
+                                          onClick={() =>
+                                            handleCountChange(doc.doctorId, slot.scheduleId, slot.patientCount + 1)
+                                          }
+                                          title="Sumar (+1)"
+                                          className="h-7 w-7 rounded-md cursor-pointer hover:bg-primary/90 active:scale-90"
+                                        >
+                                          <Plus className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+
+                                    <Input
+                                      type="text"
+                                      placeholder="Observaciones de este turno..."
+                                      defaultValue={slot.notes || ''}
+                                      onBlur={(e) => {
+                                        if (e.target.value !== (slot.notes || '')) {
+                                          handleCountChange(doc.doctorId, slot.scheduleId, slot.patientCount, e.target.value);
+                                        }
+                                      }}
+                                      className="h-7 text-xs bg-white border-slate-200 focus:bg-white transition"
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Observaciones generales si tiene 1 turno o sin turno */}
+                        {(!doc.shiftSlots || doc.shiftSlots.length <= 1) && (() => {
+                          const slot = doc.shiftSlots?.[0];
+                          const slotScheduleId = slot ? slot.scheduleId : null;
+                          const currentNotes = slot?.notes || doc.notes || '';
+                          const currentCount = slot ? slot.patientCount : doc.patientCount;
+
+                          return (
+                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center space-x-2">
+                              <Input
+                                type="text"
+                                placeholder="Observaciones del día (opcional)..."
+                                defaultValue={currentNotes}
+                                onBlur={(e) => {
+                                  if (e.target.value !== currentNotes) {
+                                    handleCountChange(doc.doctorId, slotScheduleId, currentCount, e.target.value);
+                                  }
+                                }}
+                                className="h-8 text-xs bg-slate-50/60 focus:bg-white transition"
+                              />
+                            </div>
+                          );
+                        })()}
+                      </CardContent>
                   </Card>
                 );
               })}

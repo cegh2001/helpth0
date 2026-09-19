@@ -30,10 +30,11 @@ export class GenerateReportDataUseCase {
 
     for (const doc of doctors) {
       const schedules = await this.scheduleRepository.findByDoctorId(doc.id);
-      const schedulesSummary = schedules
-        .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime))
-        .map((s) => `${DAY_NAMES[s.dayOfWeek]}: ${s.startTime}-${s.endTime}`)
-        .join(', ') || 'Sin turnos fijos';
+      const schedulesSummary =
+        schedules
+          .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime))
+          .map((s) => `${DAY_NAMES[s.dayOfWeek]}: ${s.startTime}-${s.endTime}`)
+          .join(', ') || 'Sin turnos fijos';
 
       const docCounts = periodCounts
         .filter((c) => c.doctorId === doc.id)
@@ -42,17 +43,42 @@ export class GenerateReportDataUseCase {
       const docTotal = docCounts.reduce((acc, curr) => acc + curr.patientCount, 0);
       clinicTotal += docTotal;
 
+      const dailyBreakdown = docCounts.map((c) => {
+        const [year, month, day] = c.date.split('-').map(Number);
+        const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+        const dayName = DAY_NAMES[dayOfWeek];
+
+        let shiftTime = 'Fuera de turno';
+        if (c.scheduleId) {
+          const matched = schedules.find((s) => s.id === c.scheduleId);
+          if (matched) {
+            shiftTime = `${matched.startTime} - ${matched.endTime}`;
+          }
+        } else {
+          const dayScheds = schedules.filter((s) => s.dayOfWeek === dayOfWeek);
+          if (dayScheds.length === 1) {
+            shiftTime = `${dayScheds[0].startTime} - ${dayScheds[0].endTime}`;
+          } else if (dayScheds.length > 1) {
+            shiftTime = dayScheds.map((s) => `${s.startTime} - ${s.endTime}`).join(', ');
+          }
+        }
+
+        return {
+          date: c.date,
+          dayName,
+          shiftTime,
+          count: c.patientCount,
+          notes: c.notes,
+        };
+      });
+
       doctorRows.push({
         doctorId: doc.id,
         doctorName: doc.name,
         specialty: doc.specialty,
         schedulesSummary,
         totalPatients: docTotal,
-        dailyBreakdown: docCounts.map((c) => ({
-          date: c.date,
-          count: c.patientCount,
-          notes: c.notes,
-        })),
+        dailyBreakdown,
       });
     }
 

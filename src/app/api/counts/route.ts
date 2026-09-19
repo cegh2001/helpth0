@@ -6,6 +6,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const result = await recordPatientCountUseCase.execute({
       doctorId: body.doctorId,
+      scheduleId: body.scheduleId || null,
       date: body.date,
       patientCount: Number(body.patientCount),
       notes: body.notes,
