@@ -20,7 +20,4 @@ export class InMemoryDoctorRepository implements DoctorRepository {
     return Array.from(this.doctors.values()).filter((d) => d.isActive);
   }
 
-  async delete(id: string): Promise<void> {
-    this.doctors.delete(id);
-  }
 }

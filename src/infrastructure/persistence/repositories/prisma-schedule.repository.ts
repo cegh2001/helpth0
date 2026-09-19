@@ -90,23 +90,51 @@ export class PrismaScheduleRepository implements ScheduleRepository {
 
   async replaceDoctorSchedules(doctorId: string, schedules: WeeklySchedule[]): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      await tx.schedule.deleteMany({
+      const desiredIds = schedules.map((schedule) => schedule.id);
+      const currentSchedules = await tx.schedule.findMany({
         where: { doctorId },
+        select: { id: true, startTime: true, endTime: true },
+      });
+      const retiredSchedules = currentSchedules.filter(
+        (schedule) => !desiredIds.includes(schedule.id)
+      );
+
+      await Promise.all(retiredSchedules.map((schedule) => tx.dailyCount.updateMany({
+        where: {
+          scheduleId: schedule.id,
+          scheduleSnapshotStart: null,
+          scheduleSnapshotEnd: null,
+        },
+        data: {
+          scheduleSnapshotStart: schedule.startTime,
+          scheduleSnapshotEnd: schedule.endTime,
+        },
+      })));
+
+      await tx.schedule.deleteMany({
+        where: desiredIds.length > 0
+          ? { doctorId, id: { notIn: desiredIds } }
+          : { doctorId },
       });
 
-      if (schedules.length > 0) {
-        await tx.schedule.createMany({
-          data: schedules.map((s) => ({
-            id: s.id,
-            doctorId: s.doctorId,
-            dayOfWeek: s.dayOfWeek,
-            startTime: s.startTime,
-            endTime: s.endTime,
-            createdAt: s.createdAt,
-            updatedAt: s.updatedAt,
-          })),
-        });
-      }
+      await Promise.all(schedules.map((schedule) => tx.schedule.upsert({
+        where: { id: schedule.id },
+        create: {
+          id: schedule.id,
+          doctorId: schedule.doctorId,
+          dayOfWeek: schedule.dayOfWeek,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
+          createdAt: schedule.createdAt,
+          updatedAt: schedule.updatedAt,
+        },
+        update: {
+          dayOfWeek: schedule.dayOfWeek,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
+          updatedAt: schedule.updatedAt,
+        },
+      })));
     });
   }
 }

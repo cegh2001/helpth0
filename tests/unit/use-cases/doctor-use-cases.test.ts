@@ -66,13 +66,14 @@ describe('Doctor Use Cases', () => {
     expect(stored?.name).toBe('Dr. Gregory House');
   });
 
-  it('should delete doctor successfully', async () => {
+  it('should deactivate a doctor while preserving the record', async () => {
     const created = await registerUseCase.execute({ name: 'Dr. Cuddy', specialty: 'Endocrinology' });
     const deleteUseCase = new DeleteDoctorUseCase(doctorRepo);
 
     await deleteUseCase.execute(created.id);
 
     const stored = await doctorRepo.findById(created.id);
-    expect(stored).toBeNull();
+    expect(stored?.isActive).toBe(false);
+    await expect(listUseCase.execute()).resolves.toEqual([]);
   });
 });

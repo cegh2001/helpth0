@@ -5,45 +5,59 @@ import {
   updateDoctorUseCase,
   deleteDoctorUseCase,
 } from '@/infrastructure/container';
+import { requireApiSession } from '@/lib/auth-guard';
+import { apiErrorResponse, badRequest } from '@/lib/http-response';
 
 export async function GET(request: NextRequest) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const { searchParams } = new URL(request.url);
     const all = searchParams.get('all') === 'true';
     const doctors = await listDoctorsUseCase.execute(!all);
     return NextResponse.json({ success: true, data: doctors });
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error.message || 'Error interno del servidor' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return apiErrorResponse(error, 'doctors.GET');
   }
 }
 
 export async function POST(request: NextRequest) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (
+      !body ||
+      typeof body.name !== 'string' ||
+      (body.specialty != null && typeof body.specialty !== 'string')
+    ) {
+      return badRequest('Datos del médico inválidos');
+    }
     const doctor = await registerDoctorUseCase.execute({
       name: body.name,
       specialty: body.specialty,
     });
     return NextResponse.json({ success: true, data: doctor }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error.message || 'Error al registrar médico' },
-      { status: 400 }
-    );
+  } catch (error: unknown) {
+    return apiErrorResponse(error, 'doctors.POST');
   }
 }
 
 export async function PUT(request: NextRequest) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
   try {
-    const body = await request.json();
-    if (!body.id) {
-      return NextResponse.json(
-        { success: false, error: 'El ID del médico es obligatorio' },
-        { status: 400 }
-      );
+    const body = await request.json().catch(() => null);
+    if (
+      !body ||
+      typeof body.id !== 'string' ||
+      typeof body.name !== 'string' ||
+      (body.specialty != null && typeof body.specialty !== 'string')
+    ) {
+      return badRequest('Datos del médico inválidos');
     }
     const updated = await updateDoctorUseCase.execute({
       id: body.id,
@@ -51,15 +65,15 @@ export async function PUT(request: NextRequest) {
       specialty: body.specialty,
     });
     return NextResponse.json({ success: true, data: updated });
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error.message || 'Error al actualizar médico' },
-      { status: 400 }
-    );
+  } catch (error: unknown) {
+    return apiErrorResponse(error, 'doctors.PUT');
   }
 }
 
 export async function DELETE(request: NextRequest) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const { searchParams } = new URL(request.url);
     let id = searchParams.get('id');
@@ -72,18 +86,12 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: 'El ID del médico es requerido' },
-        { status: 400 }
-      );
+      return badRequest('El ID del médico es obligatorio');
     }
 
     await deleteDoctorUseCase.execute(id);
-    return NextResponse.json({ success: true, message: 'Médico eliminado con éxito' });
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error.message || 'Error al eliminar médico' },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: true, message: 'Médico desactivado' });
+  } catch (error: unknown) {
+    return apiErrorResponse(error, 'doctors.DELETE');
   }
 }

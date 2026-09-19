@@ -1,36 +1,36 @@
-import crypto from 'node:crypto';
+import { generateEntityId, IdGenerator } from '@/core/domain/id-generator';
+import { assertValidCalendarDate } from '@/core/domain/validation/calendar-date';
+import { assertValidTimeRange } from '@/core/domain/validation/time-range';
 
 export interface DailyPatientCountProps {
   id?: string;
   doctorId: string;
   scheduleId?: string | null;
+  scheduleStartTime?: string | null;
+  scheduleEndTime?: string | null;
   date: string; // YYYY-MM-DD
   patientCount: number;
-  notes?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
-
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 export class DailyPatientCount {
   readonly id: string;
   readonly doctorId: string;
   readonly scheduleId: string | null;
+  readonly scheduleStartTime: string | null;
+  readonly scheduleEndTime: string | null;
   readonly date: string;
   private _patientCount: number;
-  private _notes: string | null;
   readonly createdAt: Date;
   private _updatedAt: Date;
 
-  private constructor(props: DailyPatientCountProps) {
+  private constructor(props: DailyPatientCountProps, generateId: IdGenerator) {
     if (!props.doctorId || !props.doctorId.trim()) {
       throw new Error('Doctor ID cannot be empty');
     }
 
-    if (!props.date || !DATE_REGEX.test(props.date)) {
-      throw new Error('Date must be in YYYY-MM-DD format');
-    }
+    assertValidCalendarDate(props.date);
 
     if (!Number.isInteger(props.patientCount)) {
       throw new Error('Patient count must be an integer');
@@ -40,33 +40,42 @@ export class DailyPatientCount {
       throw new Error('Patient count cannot be negative');
     }
 
-    this.id = props.id || crypto.randomUUID();
+    const hasSnapshotStart = props.scheduleStartTime != null;
+    const hasSnapshotEnd = props.scheduleEndTime != null;
+    if (hasSnapshotStart !== hasSnapshotEnd) {
+      throw new Error('Schedule snapshot requires both start and end times');
+    }
+    if (hasSnapshotStart && hasSnapshotEnd) {
+      assertValidTimeRange(props.scheduleStartTime!, props.scheduleEndTime!);
+    }
+
+    this.id = props.id || generateId();
     this.doctorId = props.doctorId;
-    this.scheduleId = props.scheduleId || null;
+    this.scheduleId = props.scheduleId ?? null;
+    this.scheduleStartTime = props.scheduleStartTime ?? null;
+    this.scheduleEndTime = props.scheduleEndTime ?? null;
     this.date = props.date;
     this._patientCount = props.patientCount;
-    this._notes = props.notes?.trim() || null;
     this.createdAt = props.createdAt || new Date();
     this._updatedAt = props.updatedAt || new Date();
   }
 
-  static create(props: DailyPatientCountProps): DailyPatientCount {
-    return new DailyPatientCount(props);
+  static create(
+    props: DailyPatientCountProps,
+    generateId: IdGenerator = generateEntityId
+  ): DailyPatientCount {
+    return new DailyPatientCount(props, generateId);
   }
 
   get patientCount(): number {
     return this._patientCount;
   }
 
-  get notes(): string | null {
-    return this._notes;
-  }
-
   get updatedAt(): Date {
     return this._updatedAt;
   }
 
-  updateCount(newCount: number, notes?: string | null): void {
+  updateCount(newCount: number): void {
     if (!Number.isInteger(newCount)) {
       throw new Error('Patient count must be an integer');
     }
@@ -76,9 +85,6 @@ export class DailyPatientCount {
     }
 
     this._patientCount = newCount;
-    if (notes !== undefined) {
-      this._notes = notes?.trim() || null;
-    }
     this._updatedAt = new Date();
   }
 }

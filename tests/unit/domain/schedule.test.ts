@@ -39,16 +39,19 @@ describe('WeeklySchedule Entity', () => {
     }).toThrowError('Time must be in HH:mm 24-hour format');
   });
 
-  it('should throw an error if endTime is not after startTime', () => {
-    expect(() => {
-      WeeklySchedule.create({
-        doctorId: 'doc-123',
-        dayOfWeek: 3,
-        startTime: '14:00',
-        endTime: '08:00',
-      });
-    }).toThrowError('End time must be after start time');
+  it('should allow a shift that crosses midnight', () => {
+    const schedule = WeeklySchedule.create({
+      doctorId: 'doc-123',
+      dayOfWeek: 3,
+      startTime: '22:00',
+      endTime: '06:00',
+    });
 
+    expect(schedule.startTime).toBe('22:00');
+    expect(schedule.endTime).toBe('06:00');
+  });
+
+  it('should reject a zero-length shift', () => {
     expect(() => {
       WeeklySchedule.create({
         doctorId: 'doc-123',
@@ -56,6 +59,6 @@ describe('WeeklySchedule Entity', () => {
         startTime: '10:00',
         endTime: '10:00',
       });
-    }).toThrowError('End time must be after start time');
+    }).toThrowError('Start time and end time must be different');
   });
 });

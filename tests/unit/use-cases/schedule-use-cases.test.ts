@@ -41,6 +41,22 @@ describe('Schedule Use Cases', () => {
     expect(saved.length).toBe(2);
   });
 
+  it('should preserve the id of an unchanged schedule', async () => {
+    const schedule = { dayOfWeek: 1, startTime: '08:00', endTime: '12:00' };
+    const initial = await setSchedulesUseCase.execute({
+      doctorId: sampleDoctor.id,
+      schedules: [schedule],
+    });
+
+    const replacement = await setSchedulesUseCase.execute({
+      doctorId: sampleDoctor.id,
+      schedules: [schedule],
+    });
+
+    expect(replacement[0].id).toBe(initial[0].id);
+    expect(await scheduleRepo.findById(initial[0].id)).not.toBeNull();
+  });
+
   it('should reject schedule assignment for non-existent doctor', async () => {
     await expect(
       setSchedulesUseCase.execute({
@@ -62,5 +78,41 @@ describe('Schedule Use Cases', () => {
         schedules: overlapping,
       })
     ).rejects.toThrowError('Overlapping schedule detected for day 2');
+  });
+
+  it('should reject overlap between an overnight shift and the next day', async () => {
+    await expect(
+      setSchedulesUseCase.execute({
+        doctorId: sampleDoctor.id,
+        schedules: [
+          { dayOfWeek: 1, startTime: '22:00', endTime: '06:00' },
+          { dayOfWeek: 2, startTime: '05:30', endTime: '09:00' },
+        ],
+      })
+    ).rejects.toThrowError('Overlapping schedule detected');
+  });
+
+  it('should allow adjacent overnight and next-day shifts', async () => {
+    const result = await setSchedulesUseCase.execute({
+      doctorId: sampleDoctor.id,
+      schedules: [
+        { dayOfWeek: 1, startTime: '22:00', endTime: '06:00' },
+        { dayOfWeek: 2, startTime: '06:00', endTime: '09:00' },
+      ],
+    });
+
+    expect(result).toHaveLength(2);
+  });
+
+  it('should detect Sunday overnight overlap with Monday', async () => {
+    await expect(
+      setSchedulesUseCase.execute({
+        doctorId: sampleDoctor.id,
+        schedules: [
+          { dayOfWeek: 0, startTime: '23:00', endTime: '02:00' },
+          { dayOfWeek: 1, startTime: '01:00', endTime: '04:00' },
+        ],
+      })
+    ).rejects.toThrowError('Overlapping schedule detected');
   });
 });

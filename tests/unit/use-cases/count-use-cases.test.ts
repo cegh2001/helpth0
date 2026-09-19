@@ -3,6 +3,7 @@ import { InMemoryDoctorRepository } from '../../mocks/in-memory-doctor.repositor
 import { InMemoryDailyCountRepository } from '../../mocks/in-memory-daily-count.repository';
 import { InMemoryScheduleRepository } from '../../mocks/in-memory-schedule.repository';
 import { Doctor } from '@/core/domain/entities/doctor.entity';
+import { DailyPatientCount } from '@/core/domain/entities/daily-count.entity';
 import { WeeklySchedule } from '@/core/domain/entities/schedule.entity';
 import { RecordPatientCountUseCase } from '@/core/application/use-cases/count/record-patient-count.use-case';
 import { GetDailyOverviewUseCase } from '@/core/application/use-cases/count/get-daily-overview.use-case';
@@ -24,7 +25,7 @@ describe('Count and Overview Use Cases', () => {
     countRepo = new InMemoryDailyCountRepository();
     scheduleRepo = new InMemoryScheduleRepository();
 
-    recordCountUseCase = new RecordPatientCountUseCase(doctorRepo, countRepo);
+    recordCountUseCase = new RecordPatientCountUseCase(doctorRepo, scheduleRepo, countRepo);
     dailyOverviewUseCase = new GetDailyOverviewUseCase(doctorRepo, scheduleRepo, countRepo);
     reportDataUseCase = new GenerateReportDataUseCase(doctorRepo, scheduleRepo, countRepo);
 
@@ -47,7 +48,6 @@ describe('Count and Overview Use Cases', () => {
       doctorId: doctor1.id,
       date: '2026-09-21',
       patientCount: 14,
-      notes: 'Consultation & follow-ups',
     });
 
     expect(record.doctorId).toBe(doctor1.id);
@@ -69,11 +69,9 @@ describe('Count and Overview Use Cases', () => {
       doctorId: doctor1.id,
       date: '2026-09-21',
       patientCount: 16,
-      notes: 'Added afternoon patients',
     });
 
     expect(updated.patientCount).toBe(16);
-    expect(updated.notes).toBe('Added afternoon patients');
   });
 
   it('should get a complete daily overview for all doctors on a given date', async () => {
@@ -137,7 +135,6 @@ describe('Count and Overview Use Cases', () => {
       scheduleId: morningShift.id,
       date: '2026-09-21',
       patientCount: 8,
-      notes: 'Morning shift',
     });
 
     await recordCountUseCase.execute({
@@ -145,7 +142,6 @@ describe('Count and Overview Use Cases', () => {
       scheduleId: afternoonShift.id,
       date: '2026-09-21',
       patientCount: 12,
-      notes: 'Afternoon shift',
     });
 
     const overview = await dailyOverviewUseCase.execute('2026-09-21');
@@ -164,5 +160,134 @@ describe('Count and Overview Use Cases', () => {
     expect(doc1Report?.dailyBreakdown.length).toBe(2);
     expect(doc1Report?.dailyBreakdown[0].shiftTime).toBe('08:00 - 14:00');
     expect(doc1Report?.dailyBreakdown[1].shiftTime).toBe('14:00 - 18:00');
+  });
+
+  it('should reject a schedule that does not exist', async () => {
+    await expect(
+      recordCountUseCase.execute({
+        doctorId: doctor1.id,
+        scheduleId: 'missing-schedule',
+        date: '2026-09-21',
+        patientCount: 3,
+      })
+    ).rejects.toThrowError('Schedule not found');
+  });
+
+  it('should reject a schedule owned by another doctor', async () => {
+    const otherSchedule = WeeklySchedule.create({
+      doctorId: doctor2.id,
+      dayOfWeek: 1,
+      startTime: '09:00',
+      endTime: '12:00',
+    });
+    await scheduleRepo.save(otherSchedule);
+
+    await expect(
+      recordCountUseCase.execute({
+        doctorId: doctor1.id,
+        scheduleId: otherSchedule.id,
+        date: '2026-09-21',
+        patientCount: 3,
+      })
+    ).rejects.toThrowError('Schedule does not belong to doctor');
+  });
+
+  it('should reject a schedule that does not match the calendar day', async () => {
+    const mondaySchedule = (await scheduleRepo.findByDoctorId(doctor1.id))[0];
+
+    await expect(
+      recordCountUseCase.execute({
+        doctorId: doctor1.id,
+        scheduleId: mondaySchedule.id,
+        date: '2026-09-22',
+        patientCount: 3,
+      })
+    ).rejects.toThrowError('Schedule does not match date');
+  });
+
+  it('should preserve the recorded shift time when schedules later change', async () => {
+    const originalSchedule = (await scheduleRepo.findByDoctorId(doctor1.id))[0];
+    await recordCountUseCase.execute({
+      doctorId: doctor1.id,
+      scheduleId: originalSchedule.id,
+      date: '2026-09-21',
+      patientCount: 9,
+    });
+
+    await scheduleRepo.replaceDoctorSchedules(doctor1.id, [
+      WeeklySchedule.create({
+        doctorId: doctor1.id,
+        dayOfWeek: 1,
+        startTime: '10:00',
+        endTime: '16:00',
+      }),
+    ]);
+
+    const report = await reportDataUseCase.execute({
+      startDate: '2026-09-21',
+      endDate: '2026-09-21',
+    });
+    expect(report.doctors[0].dailyBreakdown[0].shiftTime).toBe('08:00 - 14:00');
+  });
+
+  it('should preserve the recorded shift time when the schedule is removed', async () => {
+    const originalSchedule = (await scheduleRepo.findByDoctorId(doctor1.id))[0];
+    await recordCountUseCase.execute({
+      doctorId: doctor1.id,
+      scheduleId: originalSchedule.id,
+      date: '2026-09-21',
+      patientCount: 7,
+    });
+
+    await scheduleRepo.replaceDoctorSchedules(doctor1.id, []);
+
+    const report = await reportDataUseCase.execute({
+      startDate: '2026-09-21',
+      endDate: '2026-09-21',
+    });
+    expect(report.doctors[0].dailyBreakdown[0].shiftTime).toBe('08:00 - 14:00');
+  });
+
+  it('should identify legacy records without a shift snapshot', async () => {
+    const originalSchedule = (await scheduleRepo.findByDoctorId(doctor1.id))[0];
+    await countRepo.save(DailyPatientCount.create({
+      doctorId: doctor1.id,
+      scheduleId: originalSchedule.id,
+      date: '2026-09-21',
+      patientCount: 4,
+    }));
+
+    const report = await reportDataUseCase.execute({
+      startDate: '2026-09-21',
+      endDate: '2026-09-21',
+    });
+    expect(report.doctors[0].dailyBreakdown[0].shiftTime).toBe('Horario histórico no disponible');
+  });
+
+  it('should reject impossible dates and invalid report ranges', async () => {
+    await expect(dailyOverviewUseCase.execute('2026-02-30')).rejects.toThrowError(
+      'Date must be a valid calendar date'
+    );
+    await expect(
+      reportDataUseCase.execute({ startDate: '2026-09-22', endDate: '2026-09-21' })
+    ).rejects.toThrowError('Start date cannot be after end date');
+  });
+
+  it('should atomically keep one record per doctor, date, and slot', async () => {
+    await Promise.all([
+      recordCountUseCase.execute({
+        doctorId: doctor1.id,
+        date: '2026-09-21',
+        patientCount: 11,
+      }),
+      recordCountUseCase.execute({
+        doctorId: doctor1.id,
+        date: '2026-09-21',
+        patientCount: 22,
+      }),
+    ]);
+
+    expect(countRepo.records.size).toBe(1);
+    expect((await countRepo.findByDoctorAndDate(doctor1.id, '2026-09-21'))?.patientCount).toBe(22);
   });
 });

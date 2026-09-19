@@ -3,6 +3,7 @@ import { ClinicReportData, ReportExporterPort } from '@/core/application/ports/r
 
 export class PdfKitReportExporter implements ReportExporterPort {
   async exportToExcel(data: ClinicReportData): Promise<Buffer> {
+    void data;
     throw new Error('Use ExcelJsReportExporter for Excel generation');
   }
 
@@ -175,8 +176,7 @@ export class PdfKitReportExporter implements ReportExporterPort {
           .text('Fecha', 45, y + 6)
           .text('Día', 110, y + 6)
           .text('Médico', 145, y + 6)
-          .text('Turno', 280, y + 6)
-          .text('Observaciones', 380, y + 6)
+          .text('Turno', 310, y + 6)
           .text('Pacientes', 490, y + 6, { width: 60, align: 'right' });
 
         y += 22;
@@ -203,10 +203,9 @@ export class PdfKitReportExporter implements ReportExporterPort {
               .text(item.date, 45, y + 6, { width: 60 })
               .text(item.dayName, 110, y + 6, { width: 30 })
               .font('Helvetica-Bold')
-              .text(docRow.doctorName, 145, y + 6, { width: 130, ellipsis: true })
+              .text(docRow.doctorName, 145, y + 6, { width: 155, ellipsis: true })
               .font('Helvetica')
-              .text(item.shiftTime, 280, y + 6, { width: 95, ellipsis: true })
-              .text(item.notes || '—', 380, y + 6, { width: 105, ellipsis: true })
+              .text(item.shiftTime, 310, y + 6, { width: 170, ellipsis: true })
               .font('Helvetica-Bold')
               .text(String(item.count), 490, y + 6, { width: 60, align: 'right' });
 

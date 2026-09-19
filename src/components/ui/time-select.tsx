@@ -16,6 +16,7 @@ export interface TimeSelectProps {
   className?: string;
   placeholder?: string;
   disabled?: boolean;
+  ariaLabel: string;
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
@@ -27,6 +28,7 @@ export function TimeSelect({
   className,
   placeholder = '08:00',
   disabled = false,
+  ariaLabel,
 }: TimeSelectProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -42,7 +44,11 @@ export function TimeSelect({
   // Auto-scroll to current hour when popover opens
   React.useEffect(() => {
     if (open && selectedHourRef.current) {
-      selectedHourRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      selectedHourRef.current.scrollIntoView({
+        block: 'center',
+        behavior: reduceMotion ? 'auto' : 'smooth',
+      });
     }
   }, [open]);
 
@@ -70,6 +76,7 @@ export function TimeSelect({
           type="button"
           variant="outline"
           disabled={disabled}
+          aria-label={ariaLabel}
           className={cn(
             'w-28 h-9 px-2.5 justify-start text-xs font-mono font-medium rounded-lg shadow-2xs bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer',
             className
@@ -102,6 +109,8 @@ export function TimeSelect({
                   type="button"
                   ref={isSelected ? selectedHourRef : null}
                   onClick={() => handleHourSelect(h)}
+                  aria-label={`Seleccionar hora ${h}`}
+                  aria-pressed={isSelected}
                   className={cn(
                     'w-full py-1 text-center font-mono text-xs rounded-md transition cursor-pointer',
                     isSelected
@@ -126,6 +135,8 @@ export function TimeSelect({
                   key={m}
                   type="button"
                   onClick={() => handleMinuteSelect(m)}
+                  aria-label={`Seleccionar minutos ${m}`}
+                  aria-pressed={isSelected}
                   className={cn(
                     'w-full py-1 text-center font-mono text-xs rounded-md transition cursor-pointer',
                     isSelected

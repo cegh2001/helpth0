@@ -4,8 +4,29 @@ import { DailyCountRepository } from '@/core/domain/repositories/daily-count.rep
 export class InMemoryDailyCountRepository implements DailyCountRepository {
   public records: Map<string, DailyPatientCount> = new Map();
 
-  async save(count: DailyPatientCount): Promise<void> {
-    this.records.set(count.id, count);
+  async save(count: DailyPatientCount): Promise<DailyPatientCount> {
+    const targetSchedule = count.scheduleId ?? null;
+    const existing = Array.from(this.records.values()).find(
+      (record) =>
+        record.doctorId === count.doctorId &&
+        record.date === count.date &&
+        (record.scheduleId ?? null) === targetSchedule
+    );
+    const stored = existing
+      ? DailyPatientCount.create({
+          id: existing.id,
+          doctorId: count.doctorId,
+          scheduleId: count.scheduleId,
+          scheduleStartTime: count.scheduleStartTime,
+          scheduleEndTime: count.scheduleEndTime,
+          date: count.date,
+          patientCount: count.patientCount,
+          createdAt: existing.createdAt,
+          updatedAt: count.updatedAt,
+        })
+      : count;
+    this.records.set(stored.id, stored);
+    return stored;
   }
 
   async findById(id: string): Promise<DailyPatientCount | null> {

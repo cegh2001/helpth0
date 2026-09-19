@@ -7,14 +7,26 @@ describe('DailyPatientCount Entity', () => {
       doctorId: 'doc-123',
       date: '2026-09-18',
       patientCount: 15,
-      notes: 'Busy morning shift',
     });
 
     expect(record.id).toBeDefined();
     expect(record.doctorId).toBe('doc-123');
     expect(record.date).toBe('2026-09-18');
     expect(record.patientCount).toBe(15);
-    expect(record.notes).toBe('Busy morning shift');
+  });
+
+  it('should preserve an optional shift-time snapshot', () => {
+    const record = DailyPatientCount.create({
+      doctorId: 'doc-123',
+      scheduleId: 'schedule-123',
+      scheduleStartTime: '22:00',
+      scheduleEndTime: '06:00',
+      date: '2026-09-18',
+      patientCount: 7,
+    });
+
+    expect(record.scheduleStartTime).toBe('22:00');
+    expect(record.scheduleEndTime).toBe('06:00');
   });
 
   it('should allow updating the patient count', () => {
@@ -56,5 +68,15 @@ describe('DailyPatientCount Entity', () => {
         patientCount: 5,
       });
     }).toThrowError('Date must be in YYYY-MM-DD format');
+  });
+
+  it('should reject impossible calendar dates', () => {
+    expect(() => {
+      DailyPatientCount.create({
+        doctorId: 'doc-123',
+        date: '2026-02-30',
+        patientCount: 5,
+      });
+    }).toThrowError('Date must be a valid calendar date');
   });
 });

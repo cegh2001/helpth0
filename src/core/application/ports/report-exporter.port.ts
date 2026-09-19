@@ -9,7 +9,6 @@ export interface DoctorReportRow {
     dayName: string;
     shiftTime: string;
     count: number;
-    notes?: string | null;
   }>;
 }
 

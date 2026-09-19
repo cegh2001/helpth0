@@ -2,6 +2,10 @@ import { DoctorRepository } from '@/core/domain/repositories/doctor.repository';
 import { ScheduleRepository } from '@/core/domain/repositories/schedule.repository';
 import { DailyCountRepository } from '@/core/domain/repositories/daily-count.repository';
 import { ClinicReportData, DoctorReportRow } from '@/core/application/ports/report-exporter.port';
+import {
+  assertValidCalendarDateRange,
+  getCalendarDayOfWeek,
+} from '@/core/domain/validation/calendar-date';
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
@@ -18,9 +22,7 @@ export class GenerateReportDataUseCase {
   ) {}
 
   async execute(dto: GenerateReportDTO): Promise<ClinicReportData> {
-    if (dto.startDate > dto.endDate) {
-      throw new Error('Start date cannot be after end date');
-    }
+    assertValidCalendarDateRange(dto.startDate, dto.endDate);
 
     const doctors = await this.doctorRepository.findAll();
     const periodCounts = await this.countRepository.findByDateRange(dto.startDate, dto.endDate);
@@ -44,31 +46,17 @@ export class GenerateReportDataUseCase {
       clinicTotal += docTotal;
 
       const dailyBreakdown = docCounts.map((c) => {
-        const [year, month, day] = c.date.split('-').map(Number);
-        const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+        const dayOfWeek = getCalendarDayOfWeek(c.date);
         const dayName = DAY_NAMES[dayOfWeek];
-
-        let shiftTime = 'Fuera de turno';
-        if (c.scheduleId) {
-          const matched = schedules.find((s) => s.id === c.scheduleId);
-          if (matched) {
-            shiftTime = `${matched.startTime} - ${matched.endTime}`;
-          }
-        } else {
-          const dayScheds = schedules.filter((s) => s.dayOfWeek === dayOfWeek);
-          if (dayScheds.length === 1) {
-            shiftTime = `${dayScheds[0].startTime} - ${dayScheds[0].endTime}`;
-          } else if (dayScheds.length > 1) {
-            shiftTime = dayScheds.map((s) => `${s.startTime} - ${s.endTime}`).join(', ');
-          }
-        }
+        const shiftTime = c.scheduleStartTime && c.scheduleEndTime
+          ? `${c.scheduleStartTime} - ${c.scheduleEndTime}`
+          : 'Horario histórico no disponible';
 
         return {
           date: c.date,
           dayName,
           shiftTime,
           count: c.patientCount,
-          notes: c.notes,
         };
       });
 

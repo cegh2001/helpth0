@@ -99,7 +99,6 @@ export class ExcelJsReportExporter implements ReportExporterPort {
       'Especialidad',
       'Turno / Horario',
       'Pacientes Atendidos',
-      'Observaciones',
     ]);
     detailHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     detailHeader.eachCell((cell) => {
@@ -121,8 +120,8 @@ export class ExcelJsReportExporter implements ReportExporterPort {
           doc.specialty,
           item.shiftTime,
           item.count,
-          item.notes || '',
         ]);
+        row.getCell(5).alignment = { vertical: 'top', wrapText: true };
         row.getCell(6).alignment = { horizontal: 'center' };
       }
     }
@@ -132,9 +131,8 @@ export class ExcelJsReportExporter implements ReportExporterPort {
       { width: 10 },
       { width: 28 },
       { width: 22 },
-      { width: 22 },
+      { width: 34 },
       { width: 20 },
-      { width: 35 },
     ];
 
     const arrayBuffer = await workbook.xlsx.writeBuffer();
@@ -142,6 +140,7 @@ export class ExcelJsReportExporter implements ReportExporterPort {
   }
 
   async exportToPdf(data: ClinicReportData): Promise<Buffer> {
+    void data;
     throw new Error('Use PdfKitReportExporter for PDF generation');
   }
 }

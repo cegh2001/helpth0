@@ -2,14 +2,17 @@
 
 ## 1. Project Overview
 
-`helpth0` is a local-first medical clinic management monolith built with **Next.js 15**, **TypeScript**, **SQLite (via Prisma)**, **Vitest**, **ExcelJS**, and **PDFKit**.
+`helpth0` is a local-first medical clinic management monolith built with **Next.js 16**, **TypeScript**, **SQLite (via Prisma)**, **Vitest**, **ExcelJS**, and **PDFKit**.
 
 The system tracks:
 - Registered doctors and their medical specialties.
 - Weekly recurring shifts and working hours (e.g. Mon 08:00–14:00).
 - Daily patient headcounts attended per doctor (numeric volume only, zero patient PII).
 - Professional report generation with multi-sheet Excel spreadsheets (`.xlsx`) and printable medical summaries (`.pdf`).
+- One fixed local user with a closed initial setup and Better Auth sessions.
 - A native one-click Windows desktop launcher (`start-helpth0.bat`).
+
+The legacy nullable `DailyCount.notes` database column is retained only for compatibility. It must not be exposed through domain entities, APIs, UI, or exporters. After backup and retention review, legacy values can be purged with `UPDATE "DailyCount" SET "notes" = NULL WHERE "notes" IS NOT NULL;` in a trusted SQLite client.
 
 ---
 
@@ -53,7 +56,7 @@ All new business rules and use cases must be developed using TDD:
 2. **Green**: Write the minimal domain or use-case code to make tests pass.
 3. **Refactor**: Clean up and optimize while keeping tests green.
 
-Unit tests must never touch SQLite or external IO; they run completely in-memory in under 1 second. Integration tests in `tests/integration/` verify database persistence and file export outputs.
+Unit tests must never touch SQLite or external IO. Focused unit tests cover current domain rules and use cases; do not describe coverage as exhaustive. Integration tests in `tests/integration/` verify database persistence and file export outputs.
 
 ---
 
@@ -63,6 +66,9 @@ Unit tests must never touch SQLite or external IO; they run completely in-memory
 # Install dependencies
 pnpm install
 
+# Generate the local Better Auth secret when absent
+pnpm auth:ensure-secret
+
 # Run all tests (Vitest)
 pnpm test
 
@@ -71,6 +77,9 @@ pnpm test:watch
 
 # Push database schema to SQLite (dev.db)
 pnpm exec prisma db push
+
+# Apply tracked migrations
+pnpm exec prisma migrate deploy
 
 # Run development server
 pnpm dev
@@ -85,13 +94,23 @@ pnpm start
 start-helpth0.bat
 ```
 
+## 5. Authentication, Data, and Migration Operations
+
+- Authentication is local-only and single-user. `/setup` is available only before the first user exists; public sign-up stays disabled afterward.
+- Never place a user's password in the repository, documentation, fixtures, commands, or logs.
+- `.env` is ignored. `pnpm auth:ensure-secret` appends a random `BETTER_AUTH_SECRET` only when absent and rejects short existing values.
+- Production binds to `127.0.0.1`. The Windows launcher always runs secret setup, `prisma generate`, `prisma db push`, and `pnpm build`, checking each exit code before starting.
+- New migration-managed databases use `prisma migrate deploy`.
+- For an existing database created from the original pre-auth schema with `db push`, first back it up, then run `pnpm exec prisma migrate resolve --applied 20260918000000_initial`, followed by `pnpm exec prisma migrate deploy`.
+- Do not collect patient PII. Daily records contain numeric headcounts and immutable schedule-time snapshots only; the legacy `notes` column is not an application field.
+
 ---
 
-## 5. Coding & Commit Standards
+## 6. Coding & Commit Standards
 
 - **Conventional Commits**: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`.
 - **No AI Attribution**: Never include "Co-Authored-By", AI watermarks, or bot comments in Git commits.
-- **Language**: Source code, identifiers, tests, documentation, and UI copy are in **English**.
+- **Language**: Source code, identifiers, tests, and documentation are in **English**. User-facing UI copy is professional Spanish.
 - **KISS & SOLID**: Prefer straightforward, decoupled solutions over premature abstraction.
 
 <!-- BEGIN:nextjs-agent-rules -->

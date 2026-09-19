@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Users,
   Clock,
@@ -23,6 +24,7 @@ import {
   Search,
   X,
   AlertTriangle,
+  LogOut,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -65,6 +67,7 @@ import {
   getDoctorDutyStatus,
   getCurrentTimeString,
 } from '@/lib/date-utils';
+import { authClient } from '@/lib/auth-client';
 
 interface ScheduleItem {
   startTime: string;
@@ -76,7 +79,6 @@ interface DoctorShiftSlot {
   startTime: string;
   endTime: string;
   patientCount: number;
-  notes: string | null;
   countRecordId: string | null;
 }
 
@@ -88,7 +90,6 @@ interface DoctorOverview {
   schedules: ScheduleItem[];
   shiftSlots?: DoctorShiftSlot[];
   patientCount: number;
-  notes: string | null;
   countRecordId: string | null;
 }
 
@@ -116,12 +117,16 @@ const DIAS_SEMANA = [
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     return formatLocalDate();
   });
 
   const [overview, setOverview] = useState<DailyOverviewData | null>(null);
   const [loading, setLoading] = useState(true);
+  const overviewRequestRef = useRef<AbortController | null>(null);
+  const [countUpdateQueues] = useState(() => new Map<string, Promise<void>>());
+  const [overviewRevision, setOverviewRevision] = useState(0);
   const [activeTab, setActiveTab] = useState<string>('desk');
   const [feedbackMessage, setFeedbackMessage] = useState<{
     type: 'success' | 'error';
@@ -168,38 +173,82 @@ export default function DashboardPage() {
     return formatLocalDate();
   });
 
-  const showFeedback = (type: 'success' | 'error', text: string) => {
+  const showFeedback = useCallback((type: 'success' | 'error', text: string) => {
     setFeedbackMessage({ type, text });
     setTimeout(() => setFeedbackMessage(null), 4000);
-  };
+  }, []);
 
   const fetchOverview = useCallback(async (date: string) => {
-    setLoading(true);
+    overviewRequestRef.current?.abort();
+    const controller = new AbortController();
+    overviewRequestRef.current = controller;
     try {
-      const res = await fetch(`/api/overview?date=${date}`);
+      const res = await fetch(`/api/overview?date=${date}`, { signal: controller.signal });
+      if (res.status === 401) {
+        router.replace('/login');
+        return;
+      }
       const data = await res.json();
+      if (controller.signal.aborted) return;
       if (data.success) {
         setOverview(data.data);
       } else {
         showFeedback('error', data.error || 'Error al cargar el resumen diario');
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       showFeedback('error', 'Error de conexión al cargar datos');
     } finally {
-      setLoading(false);
+      if (overviewRequestRef.current === controller) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [router, showFeedback]);
 
   useEffect(() => {
-    fetchOverview(selectedDate);
-  }, [selectedDate, fetchOverview]);
+    overviewRequestRef.current?.abort();
+    const controller = new AbortController();
+    overviewRequestRef.current = controller;
+
+    async function loadSelectedDate() {
+      try {
+        const response = await fetch(`/api/overview?date=${selectedDate}`, {
+          signal: controller.signal,
+        });
+        if (response.status === 401) {
+          router.replace('/login');
+          return;
+        }
+
+        const data = await response.json();
+        if (controller.signal.aborted) return;
+        if (data.success) {
+          setOverview(data.data);
+        } else {
+          showFeedback('error', data.error || 'Error al cargar el resumen diario');
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        showFeedback('error', 'Error de conexión al cargar datos');
+      } finally {
+        if (overviewRequestRef.current === controller) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadSelectedDate();
+    return () => controller.abort();
+  }, [selectedDate, overviewRevision, router, showFeedback]);
 
   // Navegación de fecha
   const changeDateByDays = (days: number) => {
+    setLoading(true);
     setSelectedDate((prev) => addDaysToDateString(prev, days));
   };
 
   const setDateToToday = () => {
+    setLoading(true);
     setSelectedDate(formatLocalDate());
   };
 
@@ -213,24 +262,16 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const isSelectedDateToday = useMemo(() => {
-    return selectedDate === formatLocalDate();
-  }, [selectedDate]);
+  const isSelectedDateToday = selectedDate === formatLocalDate();
 
-  const activeNowCount = useMemo(() => {
-    if (!overview?.doctors) return 0;
-    return overview.doctors.filter(
+  const activeNowCount = overview?.doctors.filter(
       (d) => getDoctorDutyStatus(d.schedules, isSelectedDateToday, currentTime) === 'on_duty'
-    ).length;
-  }, [overview?.doctors, isSelectedDateToday, currentTime]);
+    ).length ?? 0;
 
-  const scheduledTodayCount = useMemo(() => {
-    if (!overview?.doctors) return 0;
-    return overview.doctors.filter((d) => d.scheduledToday).length;
-  }, [overview?.doctors]);
+  const scheduledTodayCount = overview?.doctors.filter((d) => d.scheduledToday).length ?? 0;
 
   // Médicos filtrados en Recepción Diaria
-  const filteredDeskDoctors = useMemo(() => {
+  const filteredDeskDoctors = (() => {
     if (!overview?.doctors) return [];
     if (!searchDesk.trim()) return overview.doctors;
     const q = searchDesk.toLowerCase().trim();
@@ -239,10 +280,10 @@ export default function DashboardPage() {
         d.doctorName.toLowerCase().includes(q) ||
         d.specialty.toLowerCase().includes(q)
     );
-  }, [overview?.doctors, searchDesk]);
+  })();
 
   // Médicos filtrados en Directorio
-  const filteredDirectoryDoctors = useMemo(() => {
+  const filteredDirectoryDoctors = (() => {
     if (!overview?.doctors) return [];
     if (!searchDoctors.trim()) return overview.doctors;
     const q = searchDoctors.toLowerCase().trim();
@@ -251,26 +292,26 @@ export default function DashboardPage() {
         d.doctorName.toLowerCase().includes(q) ||
         d.specialty.toLowerCase().includes(q)
     );
-  }, [overview?.doctors, searchDoctors]);
+  })();
 
   // Manejo de conteo de pacientes granular por turno
-  const handleCountChange = async (
+  const handleCountChange = useCallback(async (
     doctorId: string,
     scheduleId: string | null,
-    newCount: number,
-    notes?: string | null
+    newCount: number
   ) => {
     if (newCount < 0) return;
+    const requestDate = selectedDate;
 
-    if (overview) {
-      const updatedDoctors = overview.doctors.map((d) => {
+    setOverview((currentOverview) => {
+      if (!currentOverview || currentOverview.date !== requestDate) return currentOverview;
+      const updatedDoctors = currentOverview.doctors.map((d) => {
         if (d.doctorId === doctorId) {
           const updatedSlots = (d.shiftSlots || []).map((slot) => {
             if ((slot.scheduleId || null) === (scheduleId || null)) {
               return {
                 ...slot,
                 patientCount: newCount,
-                notes: notes !== undefined ? notes : slot.notes,
               };
             }
             return slot;
@@ -280,36 +321,53 @@ export default function DashboardPage() {
             ...d,
             shiftSlots: updatedSlots,
             patientCount: newDocTotal,
-            notes: notes !== undefined ? notes : d.notes,
           };
         }
         return d;
       });
       const newTotal = updatedDoctors.reduce((acc, curr) => acc + curr.patientCount, 0);
-      setOverview({ ...overview, doctors: updatedDoctors, totalPatientsToday: newTotal });
-    }
+      return { ...currentOverview, doctors: updatedDoctors, totalPatientsToday: newTotal };
+    });
 
-    try {
+    const slotKey = `${doctorId}:${scheduleId ?? 'unassigned'}:${requestDate}`;
+    const previousUpdate = countUpdateQueues.get(slotKey) ?? Promise.resolve();
+    const pendingUpdate = previousUpdate.catch(() => undefined).then(async () => {
       const res = await fetch('/api/counts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           doctorId,
-          scheduleId: scheduleId || null,
-          date: selectedDate,
+          scheduleId,
+          date: requestDate,
           patientCount: newCount,
-          notes: notes,
         }),
       });
       const data = await res.json();
-      if (!data.success) {
-        showFeedback('error', data.error || 'Error al guardar el conteo');
-        fetchOverview(selectedDate);
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Error al guardar el conteo');
       }
-    } catch {
-      showFeedback('error', 'Error al sincronizar con la base de datos');
-      fetchOverview(selectedDate);
+    });
+    countUpdateQueues.set(slotKey, pendingUpdate);
+
+    try {
+      await pendingUpdate;
+    } catch (error) {
+      showFeedback(
+        'error',
+        error instanceof Error ? error.message : 'Error al sincronizar con la base de datos'
+      );
+      setOverviewRevision((revision) => revision + 1);
+    } finally {
+      if (countUpdateQueues.get(slotKey) === pendingUpdate) {
+        countUpdateQueues.delete(slotKey);
+      }
     }
+  }, [countUpdateQueues, selectedDate, showFeedback]);
+
+  const handleSignOut = async () => {
+    await authClient.signOut();
+    router.replace('/login');
+    router.refresh();
   };
 
   // Registrar médico
@@ -377,7 +435,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Eliminar médico
+  // Desactivar médico
   const handleDeleteDoctor = async () => {
     if (!deletingDoctor) return;
 
@@ -388,14 +446,14 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (data.success) {
-        showFeedback('success', `Dr. ${deletingDoctor.name} eliminado con éxito`);
+        showFeedback('success', `Dr. ${deletingDoctor.name} desactivado`);
         setDeletingDoctor(null);
         fetchOverview(selectedDate);
       } else {
-        showFeedback('error', data.error || 'Error al eliminar médico');
+        showFeedback('error', data.error || 'Error al desactivar médico');
       }
     } catch {
-      showFeedback('error', 'Error de red al eliminar médico');
+      showFeedback('error', 'Error de red al desactivar médico');
     } finally {
       setIsDeletingDoctor(false);
     }
@@ -459,10 +517,10 @@ export default function DashboardPage() {
     setDoctorSchedules(doctorSchedules.filter((_, i) => i !== index));
   };
 
-  const updateScheduleSlot = (
+  const updateScheduleSlot = <Field extends keyof DoctorScheduleSetting>(
     index: number,
-    field: keyof DoctorScheduleSetting,
-    value: any
+    field: Field,
+    value: DoctorScheduleSetting[Field]
   ) => {
     const updated = [...doctorSchedules];
     updated[index] = { ...updated[index], [field]: value };
@@ -524,7 +582,11 @@ export default function DashboardPage() {
 
             <DatePicker
               value={selectedDate}
-              onChange={setSelectedDate}
+              onChange={(date) => {
+                setLoading(true);
+                setSelectedDate(date);
+              }}
+              ariaLabel="Seleccionar fecha del conteo"
               className="border-0 bg-transparent shadow-none hover:bg-white h-8 text-xs font-semibold"
             />
 
@@ -546,6 +608,16 @@ export default function DashboardPage() {
             >
               Hoy
             </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleSignOut}
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+              className="cursor-pointer hover:bg-white hover:shadow-2xs rounded-lg"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </header>
@@ -555,6 +627,8 @@ export default function DashboardPage() {
         {/* Alerta Toast */}
         {feedbackMessage && (
           <div
+            role={feedbackMessage.type === 'error' ? 'alert' : 'status'}
+            aria-live={feedbackMessage.type === 'error' ? 'assertive' : 'polite'}
             className={`p-4 rounded-xl flex items-center space-x-3 transition-all ${
               feedbackMessage.type === 'success'
                 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
@@ -581,7 +655,7 @@ export default function DashboardPage() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Pacientes Hoy
                 </p>
-                <p className="text-3xl font-extrabold text-slate-900 mt-0.5">
+                <p aria-live="polite" className="text-3xl font-extrabold text-slate-900 mt-0.5">
                   {loading ? '...' : overview?.totalPatientsToday ?? 0}
                 </p>
               </div>
@@ -598,7 +672,7 @@ export default function DashboardPage() {
                   Médicos en Consulta Ahora
                 </p>
                 <div className="flex items-baseline space-x-2 mt-0.5">
-                  <p className="text-3xl font-extrabold text-slate-900">
+                  <p aria-live="polite" className="text-3xl font-extrabold text-slate-900">
                     {loading ? '...' : activeNowCount}
                   </p>
                   <span className="text-xs text-slate-500 font-medium">
@@ -618,7 +692,7 @@ export default function DashboardPage() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Médicos Registrados
                 </p>
-                <p className="text-3xl font-extrabold text-slate-900 mt-0.5">
+                <p aria-live="polite" className="text-3xl font-extrabold text-slate-900 mt-0.5">
                   {loading ? '...' : overview?.doctors.length ?? 0}
                 </p>
               </div>
@@ -672,6 +746,7 @@ export default function DashboardPage() {
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <Input
                     type="text"
+                    aria-label="Buscar médico o especialidad en recepción"
                     placeholder="Buscar médico o especialidad..."
                     value={searchDesk}
                     onChange={(e) => setSearchDesk(e.target.value)}
@@ -679,7 +754,9 @@ export default function DashboardPage() {
                   />
                   {searchDesk && (
                     <button
+                      type="button"
                       onClick={() => setSearchDesk('')}
+                      aria-label="Limpiar búsqueda de recepción"
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -714,7 +791,7 @@ export default function DashboardPage() {
               <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 space-y-2">
                 <Search className="w-8 h-8 text-slate-300 mx-auto" />
                 <p className="text-sm font-medium">
-                  No se encontraron médicos que coincidan con "{searchDesk}"
+                  No se encontraron médicos que coincidan con &ldquo;{searchDesk}&rdquo;
                 </p>
                 <Button
                   variant="outline"
@@ -819,6 +896,7 @@ export default function DashboardPage() {
                                       handleCountChange(doc.doctorId, slotScheduleId, Math.max(0, currentSlotCount - 1))
                                     }
                                     title="Restar (-1)"
+                                    aria-label={`Restar un paciente a ${doc.doctorName}`}
                                     className="h-8 w-8 rounded-lg cursor-pointer hover:bg-white active:scale-90"
                                   >
                                     <Minus className="w-3.5 h-3.5" />
@@ -827,6 +905,7 @@ export default function DashboardPage() {
                                   <Input
                                     type="number"
                                     min="0"
+                                    aria-label={`Pacientes atendidos por ${doc.doctorName}`}
                                     value={currentSlotCount}
                                     onChange={(e) =>
                                       handleCountChange(doc.doctorId, slotScheduleId, parseInt(e.target.value) || 0)
@@ -841,6 +920,7 @@ export default function DashboardPage() {
                                       handleCountChange(doc.doctorId, slotScheduleId, currentSlotCount + 1)
                                     }
                                     title="Sumar (+1)"
+                                    aria-label={`Sumar un paciente a ${doc.doctorName}`}
                                     className="h-8 w-8 rounded-lg cursor-pointer hover:bg-primary/90 active:scale-90"
                                   >
                                     <Plus className="w-3.5 h-3.5" />
@@ -901,6 +981,7 @@ export default function DashboardPage() {
                                             handleCountChange(doc.doctorId, slot.scheduleId, Math.max(0, slot.patientCount - 1))
                                           }
                                           title="Restar (-1)"
+                                          aria-label={`Restar un paciente a ${doc.doctorName} en el turno ${slot.startTime} a ${slot.endTime}`}
                                           className="h-7 w-7 rounded-md cursor-pointer hover:bg-slate-100 active:scale-90"
                                         >
                                           <Minus className="w-3 h-3" />
@@ -909,6 +990,7 @@ export default function DashboardPage() {
                                         <Input
                                           type="number"
                                           min="0"
+                                          aria-label={`Pacientes atendidos por ${doc.doctorName} en el turno ${slot.startTime} a ${slot.endTime}`}
                                           value={slot.patientCount}
                                           onChange={(e) =>
                                             handleCountChange(doc.doctorId, slot.scheduleId, parseInt(e.target.value) || 0)
@@ -923,6 +1005,7 @@ export default function DashboardPage() {
                                             handleCountChange(doc.doctorId, slot.scheduleId, slot.patientCount + 1)
                                           }
                                           title="Sumar (+1)"
+                                          aria-label={`Sumar un paciente a ${doc.doctorName} en el turno ${slot.startTime} a ${slot.endTime}`}
                                           className="h-7 w-7 rounded-md cursor-pointer hover:bg-primary/90 active:scale-90"
                                         >
                                           <Plus className="w-3 h-3" />
@@ -930,17 +1013,6 @@ export default function DashboardPage() {
                                       </div>
                                     </div>
 
-                                    <Input
-                                      type="text"
-                                      placeholder="Observaciones de este turno..."
-                                      defaultValue={slot.notes || ''}
-                                      onBlur={(e) => {
-                                        if (e.target.value !== (slot.notes || '')) {
-                                          handleCountChange(doc.doctorId, slot.scheduleId, slot.patientCount, e.target.value);
-                                        }
-                                      }}
-                                      className="h-7 text-xs bg-white border-slate-200 focus:bg-white transition"
-                                    />
                                   </div>
                                 );
                               })}
@@ -948,29 +1020,6 @@ export default function DashboardPage() {
                           </div>
                         )}
 
-                        {/* Observaciones generales si tiene 1 turno o sin turno */}
-                        {(!doc.shiftSlots || doc.shiftSlots.length <= 1) && (() => {
-                          const slot = doc.shiftSlots?.[0];
-                          const slotScheduleId = slot ? slot.scheduleId : null;
-                          const currentNotes = slot?.notes || doc.notes || '';
-                          const currentCount = slot ? slot.patientCount : doc.patientCount;
-
-                          return (
-                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center space-x-2">
-                              <Input
-                                type="text"
-                                placeholder="Observaciones del día (opcional)..."
-                                defaultValue={currentNotes}
-                                onBlur={(e) => {
-                                  if (e.target.value !== currentNotes) {
-                                    handleCountChange(doc.doctorId, slotScheduleId, currentCount, e.target.value);
-                                  }
-                                }}
-                                className="h-8 text-xs bg-slate-50/60 focus:bg-white transition"
-                              />
-                            </div>
-                          );
-                        })()}
                       </CardContent>
                   </Card>
                 );
@@ -1049,6 +1098,7 @@ export default function DashboardPage() {
                       <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <Input
                         type="text"
+                        aria-label="Buscar médico por nombre o especialidad"
                         placeholder="Buscar por nombre o área..."
                         value={searchDoctors}
                         onChange={(e) => setSearchDoctors(e.target.value)}
@@ -1056,7 +1106,9 @@ export default function DashboardPage() {
                       />
                       {searchDoctors && (
                         <button
+                          type="button"
                           onClick={() => setSearchDoctors('')}
+                          aria-label="Limpiar búsqueda de médicos"
                           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -1074,7 +1126,7 @@ export default function DashboardPage() {
                   <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 space-y-2">
                     <Search className="w-8 h-8 text-slate-300 mx-auto" />
                     <p className="text-sm font-medium">
-                      No se encontraron médicos para "{searchDoctors}"
+                      No se encontraron médicos para &ldquo;{searchDoctors}&rdquo;
                     </p>
                     <Button
                       variant="outline"
@@ -1132,7 +1184,7 @@ export default function DashboardPage() {
                               Turnos
                             </Button>
 
-                            {/* Botón Eliminar Médico */}
+                            {/* Botón Desactivar Médico */}
                             <Button
                               variant="ghost"
                               size="icon-sm"
@@ -1142,7 +1194,8 @@ export default function DashboardPage() {
                                   name: doc.doctorName,
                                 })
                               }
-                              title="Eliminar médico"
+                              title="Desactivar médico"
+                              aria-label={`Desactivar a ${doc.doctorName}`}
                               className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer rounded-xl h-8 w-8 transition"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1174,7 +1227,8 @@ export default function DashboardPage() {
                     <DatePicker
                       value={reportStartDate}
                       onChange={setReportStartDate}
-                      className="w-[200px]"
+                      ariaLabel="Seleccionar fecha inicial del reporte"
+                      className="w-50"
                     />
                   </div>
 
@@ -1183,7 +1237,8 @@ export default function DashboardPage() {
                     <DatePicker
                       value={reportEndDate}
                       onChange={setReportEndDate}
-                      className="w-[200px]"
+                      ariaLabel="Seleccionar fecha final del reporte"
+                      className="w-50"
                     />
                   </div>
 
@@ -1328,7 +1383,7 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL: CONFIRMAR ELIMINACIÓN DE MÉDICO */}
+      {/* MODAL: CONFIRMAR DESACTIVACIÓN DE MÉDICO */}
       <Dialog
         open={Boolean(deletingDoctor)}
         onOpenChange={(open) => {
@@ -1341,10 +1396,10 @@ export default function DashboardPage() {
               <AlertTriangle className="w-5 h-5" />
             </div>
             <DialogTitle className="text-base font-bold text-slate-900">
-              ¿Eliminar al Dr. {deletingDoctor?.name}?
+              ¿Desactivar al Dr. {deletingDoctor?.name}?
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 leading-relaxed">
-              Esta acción dará de baja definitiva al profesional médico y eliminará automáticamente sus turnos semanales y los conteos registrados asociados. Esta acción no se puede deshacer.
+              El profesional dejará de aparecer en la operación diaria. Sus turnos y conteos históricos se conservarán en los reportes.
             </DialogDescription>
           </DialogHeader>
 
@@ -1364,7 +1419,7 @@ export default function DashboardPage() {
               onClick={handleDeleteDoctor}
               className="rounded-xl text-xs cursor-pointer font-semibold shadow-xs"
             >
-              {isDeletingDoctor ? 'Eliminando...' : 'Eliminar Médico'}
+              {isDeletingDoctor ? 'Desactivando...' : 'Desactivar Médico'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1404,7 +1459,7 @@ export default function DashboardPage() {
                     Sin turnos configurados aún.
                   </p>
                   <p className="text-2xs text-slate-400 mt-0.5">
-                    Hacé clic en "Agregar Turno" para añadir el primer horario.
+                    Hacé clic en &ldquo;Agregar Turno&rdquo; para añadir el primer horario.
                   </p>
                 </div>
               ) : (
@@ -1414,14 +1469,17 @@ export default function DashboardPage() {
                     className="flex items-center space-x-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200 shadow-2xs transition hover:border-slate-300"
                   >
                     {/* Selector de Día shadcn Select */}
-                    <div className="w-[140px]">
+                    <div className="w-35">
                       <Select
                         value={String(slot.dayOfWeek)}
                         onValueChange={(val) =>
                           updateScheduleSlot(idx, 'dayOfWeek', parseInt(val))
                         }
                       >
-                        <SelectTrigger className="w-full bg-white text-xs h-9 font-medium shadow-2xs rounded-lg">
+                        <SelectTrigger
+                          aria-label={`Día del turno ${idx + 1}`}
+                          className="w-full bg-white text-xs h-9 font-medium shadow-2xs rounded-lg"
+                        >
                           <SelectValue placeholder="Día" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl shadow-lg border-slate-200">
@@ -1442,6 +1500,7 @@ export default function DashboardPage() {
                     <TimeSelect
                       value={slot.startTime}
                       onChange={(val) => updateScheduleSlot(idx, 'startTime', val)}
+                      ariaLabel={`Hora de inicio del turno ${idx + 1}`}
                     />
 
                     <span className="text-xs text-slate-400 font-medium px-0.5">a</span>
@@ -1450,6 +1509,7 @@ export default function DashboardPage() {
                     <TimeSelect
                       value={slot.endTime}
                       onChange={(val) => updateScheduleSlot(idx, 'endTime', val)}
+                      ariaLabel={`Hora de fin del turno ${idx + 1}`}
                     />
 
                     {/* Botón eliminar turno */}
@@ -1460,6 +1520,7 @@ export default function DashboardPage() {
                       onClick={() => removeScheduleSlot(idx)}
                       className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer rounded-lg h-9 w-9 shrink-0 ml-auto transition"
                       title="Eliminar turno"
+                      aria-label={`Eliminar turno ${idx + 1}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

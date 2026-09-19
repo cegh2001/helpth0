@@ -39,6 +39,7 @@ export const getDoctorSchedulesUseCase = new GetDoctorSchedulesUseCase(
 );
 export const recordPatientCountUseCase = new RecordPatientCountUseCase(
   doctorRepository,
+  scheduleRepository,
   dailyCountRepository
 );
 export const getDailyOverviewUseCase = new GetDailyOverviewUseCase(

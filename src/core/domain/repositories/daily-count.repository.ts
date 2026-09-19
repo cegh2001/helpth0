@@ -1,7 +1,7 @@
 import { DailyPatientCount } from '../entities/daily-count.entity';
 
 export interface DailyCountRepository {
-  save(count: DailyPatientCount): Promise<void>;
+  save(count: DailyPatientCount): Promise<DailyPatientCount>;
   findById(id: string): Promise<DailyPatientCount | null>;
   findByDoctorAndDate(doctorId: string, date: string): Promise<DailyPatientCount | null>;
   findByDoctorDateAndSchedule(

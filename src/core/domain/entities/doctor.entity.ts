@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import { generateEntityId, IdGenerator } from '@/core/domain/id-generator';
 
 export interface DoctorProps {
   id?: string;
@@ -17,13 +17,13 @@ export class Doctor {
   readonly createdAt: Date;
   private _updatedAt: Date;
 
-  private constructor(props: DoctorProps) {
+  private constructor(props: DoctorProps, generateId: IdGenerator) {
     const trimmedName = props.name ? props.name.trim() : '';
     if (!trimmedName) {
       throw new Error('Doctor name cannot be empty');
     }
 
-    this.id = props.id || crypto.randomUUID();
+    this.id = props.id || generateId();
     this._name = trimmedName;
     this._specialty = props.specialty?.trim() || 'General';
     this._isActive = props.isActive ?? true;
@@ -31,8 +31,8 @@ export class Doctor {
     this._updatedAt = props.updatedAt || new Date();
   }
 
-  static create(props: DoctorProps): Doctor {
-    return new Doctor(props);
+  static create(props: DoctorProps, generateId: IdGenerator = generateEntityId): Doctor {
+    return new Doctor(props, generateId);
   }
 
   get name(): string {

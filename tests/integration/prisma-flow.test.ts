@@ -11,26 +11,35 @@ import {
   excelExporter,
   pdfExporter,
 } from '@/infrastructure/container';
+import { prisma } from '@/infrastructure/persistence/prisma/prisma.client';
+
+const TEST_DATABASE_FILES = [
+  'test.db',
+  'test.db-journal',
+  'test.db-shm',
+  'test.db-wal',
+].map((fileName) => path.resolve(process.cwd(), 'prisma', fileName));
+
+function removeTestDatabaseFiles(): void {
+  for (const filePath of TEST_DATABASE_FILES) {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+}
 
 describe('Prisma & SQLite End-to-End Flow', () => {
   beforeAll(() => {
-    // Ensure test.db has the schema pushed
-    execSync('npx prisma db push --skip-generate', {
+    removeTestDatabaseFiles();
+    execSync('pnpm exec prisma db push --skip-generate', {
       env: { ...process.env, DATABASE_URL: 'file:./test.db' },
       stdio: 'ignore',
     });
-  });
+  }, 30_000);
 
-  afterAll(() => {
-    // Clean up test database files
-    const testDb = path.resolve(process.cwd(), 'test.db');
-    const testDbJournal = path.resolve(process.cwd(), 'test.db-journal');
-    if (fs.existsSync(testDb)) {
-      try { fs.unlinkSync(testDb); } catch {}
-    }
-    if (fs.existsSync(testDbJournal)) {
-      try { fs.unlinkSync(testDbJournal); } catch {}
-    }
+  afterAll(async () => {
+    await prisma.$disconnect();
+    removeTestDatabaseFiles();
   });
 
   it('should register a doctor, set weekly schedule, record headcount and export files', async () => {
@@ -54,9 +63,9 @@ describe('Prisma & SQLite End-to-End Flow', () => {
     // 3. Record headcount
     const count = await recordPatientCountUseCase.execute({
       doctorId: doctor.id,
+      scheduleId: schedules[0].id,
       date: '2026-09-21',
       patientCount: 18,
-      notes: 'Busy clinic morning',
     });
     expect(count.patientCount).toBe(18);
 
@@ -67,18 +76,27 @@ describe('Prisma & SQLite End-to-End Flow', () => {
     expect(docOverview?.scheduledToday).toBe(true);
     expect(docOverview?.patientCount).toBe(18);
 
-    // 5. Generate report data
+    // 5. Remove schedules after recording; the report must retain the recorded shift snapshot.
+    await setDoctorSchedulesUseCase.execute({
+      doctorId: doctor.id,
+      schedules: [],
+    });
+
+    // 6. Generate report data
     const reportData = await generateReportDataUseCase.execute({
       startDate: '2026-09-21',
       endDate: '2026-09-21',
     });
     expect(reportData.totalPatientsPeriod).toBeGreaterThanOrEqual(18);
+    expect(
+      reportData.doctors.find((item) => item.doctorId === doctor.id)?.dailyBreakdown[0].shiftTime
+    ).toBe('08:00 - 13:00');
 
-    // 6. Test Excel export
+    // 7. Test Excel export
     const excelBuffer = await excelExporter.exportToExcel(reportData);
     expect(excelBuffer.length).toBeGreaterThan(1000);
 
-    // 7. Test PDF export
+    // 8. Test PDF export
     const pdfBuffer = await pdfExporter.exportToPdf(reportData);
     expect(pdfBuffer.length).toBeGreaterThan(1000);
   });

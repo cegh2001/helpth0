@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import ExcelJS from 'exceljs';
 import { ExcelJsReportExporter } from '@/infrastructure/exporters/exceljs-report.exporter';
 import { PdfKitReportExporter } from '@/infrastructure/exporters/pdfkit-report.exporter';
 import { ClinicReportData } from '@/core/application/ports/report-exporter.port';
@@ -17,8 +18,8 @@ describe('Report Exporters', () => {
         schedulesSummary: 'Mon: 08:00-14:00, Wed: 08:00-14:00',
         totalPatients: 25,
         dailyBreakdown: [
-          { date: '2026-09-01', dayName: 'Mar', shiftTime: '08:00 - 14:00', count: 12, notes: 'Routine checkups' },
-          { date: '2026-09-03', dayName: 'Jue', shiftTime: '08:00 - 14:00', count: 13, notes: null },
+          { date: '2026-09-01', dayName: 'Mar', shiftTime: '08:00 - 14:00', count: 12 },
+          { date: '2026-09-03', dayName: 'Jue', shiftTime: '08:00 - 14:00', count: 13 },
         ],
       },
       {
@@ -28,8 +29,8 @@ describe('Report Exporters', () => {
         schedulesSummary: 'Tue: 09:00-13:00, Thu: 09:00-13:00',
         totalPatients: 20,
         dailyBreakdown: [
-          { date: '2026-09-02', dayName: 'Mié', shiftTime: '09:00 - 13:00', count: 10, notes: 'Clinic cases' },
-          { date: '2026-09-04', dayName: 'Vie', shiftTime: '09:00 - 13:00', count: 10, notes: null },
+          { date: '2026-09-02', dayName: 'Mié', shiftTime: '09:00 - 13:00', count: 10 },
+          { date: '2026-09-04', dayName: 'Vie', shiftTime: '09:00 - 13:00', count: 10 },
         ],
       },
     ],
@@ -44,6 +45,15 @@ describe('Report Exporters', () => {
     // Standard zip/xlsx magic bytes: PK\x03\x04
     expect(buffer[0]).toBe(0x50);
     expect(buffer[1]).toBe(0x4b);
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(
+      buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]
+    );
+    const detailSheet = workbook.getWorksheet('Desglose Diario y Turnos');
+    expect(detailSheet?.getRow(1).values).not.toContain('Observaciones');
+    expect(detailSheet?.getColumn(5).width).toBeGreaterThanOrEqual(34);
+    expect(detailSheet?.getCell('E2').alignment.wrapText).toBe(true);
   });
 
   it('should generate a valid PDF buffer with non-zero length and PDF header', async () => {

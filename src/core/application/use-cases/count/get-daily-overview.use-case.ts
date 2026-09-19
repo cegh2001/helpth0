@@ -1,13 +1,13 @@
 import { DoctorRepository } from '@/core/domain/repositories/doctor.repository';
 import { ScheduleRepository } from '@/core/domain/repositories/schedule.repository';
 import { DailyCountRepository } from '@/core/domain/repositories/daily-count.repository';
+import { getCalendarDayOfWeek } from '@/core/domain/validation/calendar-date';
 
 export interface DoctorShiftSlotOverviewDTO {
   scheduleId: string | null;
   startTime: string;
   endTime: string;
   patientCount: number;
-  notes: string | null;
   countRecordId: string | null;
 }
 
@@ -24,7 +24,6 @@ export interface DoctorDailyOverviewDTO {
   shiftSlots: DoctorShiftSlotOverviewDTO[];
   patientCount: number;
   totalPatients: number;
-  notes: string | null;
   countRecordId: string | null;
 }
 
@@ -43,9 +42,7 @@ export class GetDailyOverviewUseCase {
   ) {}
 
   async execute(date: string): Promise<DailyOverviewResponseDTO> {
-    const [year, month, day] = date.split('-').map(Number);
-    const dateObj = new Date(Date.UTC(year, month - 1, day));
-    const dayOfWeek = dateObj.getUTCDay();
+    const dayOfWeek = getCalendarDayOfWeek(date);
 
     const activeDoctors = await this.doctorRepository.findActive();
     const daySchedules = await this.scheduleRepository.findByDayOfWeek(dayOfWeek);
@@ -73,7 +70,6 @@ export class GetDailyOverviewUseCase {
             startTime: s.startTime,
             endTime: s.endTime,
             patientCount: countRecord ? countRecord.patientCount : 0,
-            notes: countRecord?.notes || null,
             countRecordId: countRecord?.id || null,
           };
         });
@@ -88,7 +84,6 @@ export class GetDailyOverviewUseCase {
             startTime: '',
             endTime: '',
             patientCount: unlinked.patientCount,
-            notes: unlinked.notes || 'Consulta fuera de turno',
             countRecordId: unlinked.id,
           });
         }
@@ -100,7 +95,6 @@ export class GetDailyOverviewUseCase {
             startTime: '',
             endTime: '',
             patientCount: generalCount ? generalCount.patientCount : 0,
-            notes: generalCount?.notes || null,
             countRecordId: generalCount?.id || null,
           },
         ];
@@ -122,7 +116,6 @@ export class GetDailyOverviewUseCase {
         shiftSlots,
         patientCount: docTotal,
         totalPatients: docTotal,
-        notes: shiftSlots[0]?.notes || null,
         countRecordId: shiftSlots[0]?.countRecordId || null,
       };
     });

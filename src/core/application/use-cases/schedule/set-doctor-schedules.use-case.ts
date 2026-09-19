@@ -1,6 +1,7 @@
 import { WeeklySchedule } from '@/core/domain/entities/schedule.entity';
 import { DoctorRepository } from '@/core/domain/repositories/doctor.repository';
 import { ScheduleRepository } from '@/core/domain/repositories/schedule.repository';
+import { timeToMinutes } from '@/core/domain/validation/time-range';
 
 export interface ScheduleItemDTO {
   dayOfWeek: number;
@@ -33,36 +34,31 @@ export class SetDoctorSchedulesUseCase {
       throw new Error('Doctor not found');
     }
 
-    // Validate no overlap within the same day
-    const byDay = new Map<number, ScheduleItemDTO[]>();
-    for (const item of dto.schedules) {
-      const list = byDay.get(item.dayOfWeek) || [];
-      for (const existing of list) {
-        // Two time intervals [A, B] and [C, D] overlap if max(A, C) < min(B, D)
-        const overlaps = Math.max(
-          this.timeToMinutes(existing.startTime),
-          this.timeToMinutes(item.startTime)
-        ) < Math.min(
-          this.timeToMinutes(existing.endTime),
-          this.timeToMinutes(item.endTime)
-        );
+    const currentSchedules = await this.scheduleRepository.findByDoctorId(dto.doctorId);
+    const domainEntities = dto.schedules.map((schedule) => {
+      const unchangedSchedule = currentSchedules.find((current) =>
+        current.dayOfWeek === schedule.dayOfWeek
+        && current.startTime === schedule.startTime
+        && current.endTime === schedule.endTime
+      );
 
-        if (overlaps) {
-          throw new Error(`Overlapping schedule detected for day ${item.dayOfWeek}`);
+      return unchangedSchedule ?? WeeklySchedule.create({
+        doctorId: dto.doctorId,
+        dayOfWeek: schedule.dayOfWeek,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
+      });
+    });
+
+    for (let currentIndex = 0; currentIndex < domainEntities.length; currentIndex += 1) {
+      for (let previousIndex = 0; previousIndex < currentIndex; previousIndex += 1) {
+        if (this.overlapsInWeeklyCycle(domainEntities[previousIndex], domainEntities[currentIndex])) {
+          throw new Error(
+            `Overlapping schedule detected for day ${domainEntities[currentIndex].dayOfWeek}`
+          );
         }
       }
-      list.push(item);
-      byDay.set(item.dayOfWeek, list);
     }
-
-    const domainEntities = dto.schedules.map((s) =>
-      WeeklySchedule.create({
-        doctorId: dto.doctorId,
-        dayOfWeek: s.dayOfWeek,
-        startTime: s.startTime,
-        endTime: s.endTime,
-      })
-    );
 
     await this.scheduleRepository.replaceDoctorSchedules(dto.doctorId, domainEntities);
 
@@ -75,8 +71,17 @@ export class SetDoctorSchedulesUseCase {
     }));
   }
 
-  private timeToMinutes(time: string): number {
-    const [h, m] = time.split(':').map(Number);
-    return h * 60 + m;
+  private overlapsInWeeklyCycle(first: WeeklySchedule, second: WeeklySchedule): boolean {
+    const weekMinutes = 7 * 24 * 60;
+    const firstStart = first.dayOfWeek * 24 * 60 + timeToMinutes(first.startTime);
+    const firstEnd = first.dayOfWeek * 24 * 60 + timeToMinutes(first.endTime)
+      + (first.endTime < first.startTime ? 24 * 60 : 0);
+    const secondStart = second.dayOfWeek * 24 * 60 + timeToMinutes(second.startTime);
+    const secondEnd = second.dayOfWeek * 24 * 60 + timeToMinutes(second.endTime)
+      + (second.endTime < second.startTime ? 24 * 60 : 0);
+
+    return [-weekMinutes, 0, weekMinutes].some((offset) =>
+      Math.max(firstStart, secondStart + offset) < Math.min(firstEnd, secondEnd + offset)
+    );
   }
 }

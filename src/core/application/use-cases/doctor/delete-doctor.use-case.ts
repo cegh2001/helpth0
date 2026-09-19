@@ -9,6 +9,7 @@ export class DeleteDoctorUseCase {
       throw new Error('Doctor not found');
     }
 
-    await this.doctorRepository.delete(id);
+    doctor.deactivate();
+    await this.doctorRepository.save(doctor);
   }
 }

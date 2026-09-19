@@ -4,8 +4,13 @@ import {
   pdfExporter,
 } from '@/infrastructure/container';
 import { formatLocalDate } from '@/lib/date-utils';
+import { requireApiSession } from '@/lib/auth-guard';
+import { apiErrorResponse } from '@/lib/http-response';
 
 export async function GET(request: NextRequest) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const { searchParams } = new URL(request.url);
     const today = formatLocalDate();
@@ -26,10 +31,7 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': `attachment; filename="clinic-report-${startDate}-to-${endDate}.pdf"`,
       },
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to generate PDF report' },
-      { status: 400 }
-    );
+  } catch (error: unknown) {
+    return apiErrorResponse(error, 'reports.pdf.GET');
   }
 }

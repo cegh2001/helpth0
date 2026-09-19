@@ -1,4 +1,5 @@
-import crypto from 'node:crypto';
+import { generateEntityId, IdGenerator } from '@/core/domain/id-generator';
+import { assertValidTimeRange } from '@/core/domain/validation/time-range';
 
 export interface WeeklyScheduleProps {
   id?: string;
@@ -10,8 +11,6 @@ export interface WeeklyScheduleProps {
   updatedAt?: Date;
 }
 
-const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
-
 export class WeeklySchedule {
   readonly id: string;
   readonly doctorId: string;
@@ -21,7 +20,7 @@ export class WeeklySchedule {
   readonly createdAt: Date;
   private _updatedAt: Date;
 
-  private constructor(props: WeeklyScheduleProps) {
+  private constructor(props: WeeklyScheduleProps, generateId: IdGenerator) {
     if (!props.doctorId || !props.doctorId.trim()) {
       throw new Error('Doctor ID cannot be empty');
     }
@@ -30,15 +29,9 @@ export class WeeklySchedule {
       throw new Error('Day of week must be between 0 (Sunday) and 6 (Saturday)');
     }
 
-    if (!TIME_REGEX.test(props.startTime) || !TIME_REGEX.test(props.endTime)) {
-      throw new Error('Time must be in HH:mm 24-hour format');
-    }
+    assertValidTimeRange(props.startTime, props.endTime);
 
-    if (props.endTime <= props.startTime) {
-      throw new Error('End time must be after start time');
-    }
-
-    this.id = props.id || crypto.randomUUID();
+    this.id = props.id || generateId();
     this.doctorId = props.doctorId;
     this.dayOfWeek = props.dayOfWeek;
     this._startTime = props.startTime;
@@ -47,8 +40,8 @@ export class WeeklySchedule {
     this._updatedAt = props.updatedAt || new Date();
   }
 
-  static create(props: WeeklyScheduleProps): WeeklySchedule {
-    return new WeeklySchedule(props);
+  static create(props: WeeklyScheduleProps, generateId: IdGenerator = generateEntityId): WeeklySchedule {
+    return new WeeklySchedule(props, generateId);
   }
 
   get startTime(): string {
@@ -64,13 +57,7 @@ export class WeeklySchedule {
   }
 
   updateTimeRange(startTime: string, endTime: string): void {
-    if (!TIME_REGEX.test(startTime) || !TIME_REGEX.test(endTime)) {
-      throw new Error('Time must be in HH:mm 24-hour format');
-    }
-
-    if (endTime <= startTime) {
-      throw new Error('End time must be after start time');
-    }
+    assertValidTimeRange(startTime, endTime);
 
     this._startTime = startTime;
     this._endTime = endTime;

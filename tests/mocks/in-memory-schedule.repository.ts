@@ -25,8 +25,9 @@ export class InMemoryScheduleRepository implements ScheduleRepository {
   }
 
   async replaceDoctorSchedules(doctorId: string, newSchedules: WeeklySchedule[]): Promise<void> {
+    const desiredIds = new Set(newSchedules.map((schedule) => schedule.id));
     for (const [id, sched] of Array.from(this.schedules.entries())) {
-      if (sched.doctorId === doctorId) {
+      if (sched.doctorId === doctorId && !desiredIds.has(id)) {
         this.schedules.delete(id);
       }
     }

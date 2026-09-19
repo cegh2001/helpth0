@@ -22,6 +22,7 @@ export interface DatePickerProps {
   className?: string;
   placeholder?: string;
   disabled?: boolean;
+  ariaLabel?: string;
 }
 
 export function DatePicker({
@@ -30,6 +31,7 @@ export function DatePicker({
   className,
   placeholder = 'Seleccionar fecha',
   disabled = false,
+  ariaLabel = 'Seleccionar fecha',
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -55,6 +57,7 @@ export function DatePicker({
         <Button
           variant="outline"
           disabled={disabled}
+          aria-label={ariaLabel}
           className={cn(
             'justify-start text-left font-medium h-9 text-xs px-3 shadow-2xs rounded-xl bg-white hover:bg-slate-50 transition cursor-pointer',
             !selectedDate && 'text-muted-foreground',
