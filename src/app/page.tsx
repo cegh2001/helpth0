@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Calendar as CalendarIcon,
   Users,
   Clock,
   FileSpreadsheet,
@@ -47,6 +46,14 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface ScheduleItem {
   startTime: string;
@@ -325,56 +332,52 @@ export default function DashboardPage() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-sm">
-              <Activity className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-sm shadow-primary/30">
+              <Activity className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                  helpth0
-                </h1>
-                <Badge variant="secondary" className="text-xs font-semibold">
-                  Monolito Local
-                </Badge>
-              </div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">
+                helpth0
+              </h1>
               <p className="text-xs text-slate-500">
                 Control de Turnos Médicos y Conteo Diario de Pacientes
               </p>
             </div>
           </div>
 
-          {/* Navegador de Fecha */}
-          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+          {/* Navegador de Fecha con shadcn DatePicker */}
+          <div className="flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
             <Button
               variant="ghost"
               size="icon-sm"
               onClick={() => changeDateByDays(-1)}
               title="Día Anterior"
+              className="cursor-pointer hover:bg-white hover:shadow-2xs rounded-lg"
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <div className="flex items-center space-x-2 px-2">
-              <CalendarIcon className="w-4 h-4 text-primary" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent font-medium text-sm text-slate-800 outline-none cursor-pointer"
-              />
-            </div>
+
+            <DatePicker
+              value={selectedDate}
+              onChange={setSelectedDate}
+              className="border-0 bg-transparent shadow-none hover:bg-white h-8 text-xs font-semibold"
+            />
+
             <Button
               variant="ghost"
               size="icon-sm"
               onClick={() => changeDateByDays(1)}
               title="Día Siguiente"
+              className="cursor-pointer hover:bg-white hover:shadow-2xs rounded-lg"
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
+
             <Button
               variant="outline"
               size="sm"
               onClick={setDateToToday}
-              className="text-xs font-semibold h-7"
+              className="text-xs font-semibold h-8 px-3 rounded-lg shadow-2xs hover:bg-white cursor-pointer"
             >
               Hoy
             </Button>
@@ -404,7 +407,7 @@ export default function DashboardPage() {
 
         {/* Tarjetas KPI de Métricas */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <Card className="shadow-xs border-slate-200">
+          <Card className="shadow-xs border-slate-200 bg-white">
             <CardContent className="p-5 flex items-center space-x-4">
               <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                 <Users className="w-6 h-6" />
@@ -420,7 +423,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-xs border-slate-200">
+          <Card className="shadow-xs border-slate-200 bg-white">
             <CardContent className="p-5 flex items-center space-x-4">
               <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                 <Clock className="w-6 h-6" />
@@ -438,7 +441,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-xs border-slate-200">
+          <Card className="shadow-xs border-slate-200 bg-white">
             <CardContent className="p-5 flex items-center space-x-4">
               <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
                 <Stethoscope className="w-6 h-6" />
@@ -457,10 +460,10 @@ export default function DashboardPage() {
 
         {/* Pestañas de Navegación shadcn */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="bg-slate-200/70 p-1 rounded-xl h-auto">
+          <TabsList className="bg-slate-200/80 p-1 rounded-xl h-auto">
             <TabsTrigger
               value="desk"
-              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2 px-4 text-xs font-semibold flex items-center space-x-2"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2.5 px-4 text-xs font-semibold flex items-center space-x-2 cursor-pointer transition"
             >
               <Activity className="w-4 h-4" />
               <span>Recepción Diaria</span>
@@ -468,7 +471,7 @@ export default function DashboardPage() {
 
             <TabsTrigger
               value="doctors"
-              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2 px-4 text-xs font-semibold flex items-center space-x-2"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2.5 px-4 text-xs font-semibold flex items-center space-x-2 cursor-pointer transition"
             >
               <Stethoscope className="w-4 h-4" />
               <span>Médicos y Horarios</span>
@@ -476,7 +479,7 @@ export default function DashboardPage() {
 
             <TabsTrigger
               value="reports"
-              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2 px-4 text-xs font-semibold flex items-center space-x-2"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2.5 px-4 text-xs font-semibold flex items-center space-x-2 cursor-pointer transition"
             >
               <Download className="w-4 h-4" />
               <span>Reportes (Excel / PDF)</span>
@@ -499,7 +502,7 @@ export default function DashboardPage() {
             {loading ? (
               <div className="py-16 text-center text-slate-400">Cargando datos del día...</div>
             ) : overview?.doctors.length === 0 ? (
-              <Card className="border-dashed p-12 text-center space-y-4">
+              <Card className="border-dashed p-12 text-center space-y-4 bg-white">
                 <Stethoscope className="w-12 h-12 text-slate-300 mx-auto" />
                 <div>
                   <h3 className="text-base font-semibold text-slate-800">
@@ -511,7 +514,7 @@ export default function DashboardPage() {
                 </div>
                 <Button
                   onClick={() => setActiveTab('doctors')}
-                  className="rounded-xl shadow-xs"
+                  className="rounded-xl shadow-xs cursor-pointer"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
                   Agregar Primer Médico
@@ -525,7 +528,7 @@ export default function DashboardPage() {
                     className={`transition-all shadow-xs ${
                       doc.scheduledToday
                         ? 'border-blue-300 ring-1 ring-blue-100 bg-white'
-                        : 'border-slate-200 bg-white/80'
+                        : 'border-slate-200 bg-white/90'
                     }`}
                   >
                     <CardContent className="p-5">
@@ -566,7 +569,7 @@ export default function DashboardPage() {
                           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                             Pacientes
                           </span>
-                          <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
                             <Button
                               type="button"
                               variant="outline"
@@ -575,7 +578,7 @@ export default function DashboardPage() {
                                 handleCountChange(doc.doctorId, Math.max(0, doc.patientCount - 1))
                               }
                               title="Restar (-1)"
-                              className="h-8 w-8 rounded-lg"
+                              className="h-8 w-8 rounded-lg cursor-pointer hover:bg-white active:scale-90"
                             >
                               <Minus className="w-3.5 h-3.5" />
                             </Button>
@@ -595,7 +598,7 @@ export default function DashboardPage() {
                               size="icon-sm"
                               onClick={() => handleCountChange(doc.doctorId, doc.patientCount + 1)}
                               title="Sumar (+1)"
-                              className="h-8 w-8 rounded-lg"
+                              className="h-8 w-8 rounded-lg cursor-pointer hover:bg-primary/90 active:scale-90"
                             >
                               <Plus className="w-3.5 h-3.5" />
                             </Button>
@@ -614,7 +617,7 @@ export default function DashboardPage() {
                               handleCountChange(doc.doctorId, doc.patientCount, e.target.value);
                             }
                           }}
-                          className="h-8 text-xs bg-slate-50/50"
+                          className="h-8 text-xs bg-slate-50/60 focus:bg-white transition"
                         />
                       </div>
                     </CardContent>
@@ -628,7 +631,7 @@ export default function DashboardPage() {
           <TabsContent value="doctors" className="mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Formulario Registrar Médico */}
-              <Card className="shadow-xs border-slate-200 h-fit">
+              <Card className="shadow-xs border-slate-200 h-fit bg-white">
                 <CardHeader>
                   <div className="flex items-center space-x-2">
                     <UserPlus className="w-5 h-5 text-primary" />
@@ -641,7 +644,7 @@ export default function DashboardPage() {
                 <CardContent>
                   <form onSubmit={handleRegisterDoctor} className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="doc-name" className="text-xs font-semibold">
+                      <Label htmlFor="doc-name" className="text-xs font-semibold text-slate-700">
                         Nombre Completo del Médico *
                       </Label>
                       <Input
@@ -651,12 +654,12 @@ export default function DashboardPage() {
                         placeholder="Ej. Dr. Carlos Gómez"
                         value={newDocName}
                         onChange={(e) => setNewDocName(e.target.value)}
-                        className="rounded-xl"
+                        className="rounded-xl h-10"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label htmlFor="doc-spec" className="text-xs font-semibold">
+                      <Label htmlFor="doc-spec" className="text-xs font-semibold text-slate-700">
                         Especialidad / Área
                       </Label>
                       <Input
@@ -665,14 +668,14 @@ export default function DashboardPage() {
                         placeholder="Ej. Pediatría, Traumatología"
                         value={newDocSpecialty}
                         onChange={(e) => setNewDocSpecialty(e.target.value)}
-                        className="rounded-xl"
+                        className="rounded-xl h-10"
                       />
                     </div>
 
                     <Button
                       type="submit"
                       disabled={isSubmittingDoctor}
-                      className="w-full rounded-xl"
+                      className="w-full rounded-xl cursor-pointer hover:bg-primary/90 transition shadow-xs h-10 font-semibold"
                     >
                       <UserPlus className="w-4 h-4 mr-2" />
                       {isSubmittingDoctor ? 'Guardando...' : 'Registrar Médico'}
@@ -688,7 +691,7 @@ export default function DashboardPage() {
                 </h3>
 
                 {overview?.doctors.length === 0 ? (
-                  <Card className="p-8 text-center text-slate-400 border-dashed">
+                  <Card className="p-8 text-center text-slate-400 border-dashed bg-white">
                     No hay médicos registrados. Agregá uno usando el formulario.
                   </Card>
                 ) : (
@@ -696,7 +699,7 @@ export default function DashboardPage() {
                     {overview?.doctors.map((doc) => (
                       <Card
                         key={doc.doctorId}
-                        className="shadow-xs border-slate-200 hover:border-slate-300 transition"
+                        className="shadow-xs border-slate-200 hover:border-slate-300 transition bg-white"
                       >
                         <CardContent className="p-4 flex items-center justify-between">
                           <div>
@@ -712,7 +715,7 @@ export default function DashboardPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => openScheduleManager(doc.doctorId, doc.doctorName)}
-                            className="rounded-xl text-xs"
+                            className="rounded-xl text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all"
                           >
                             <CalendarDays className="w-3.5 h-3.5 mr-1.5 text-primary" />
                             Configurar Turnos Semanales
@@ -728,7 +731,7 @@ export default function DashboardPage() {
 
           {/* PESTAÑA 3: REPORTES */}
           <TabsContent value="reports" className="mt-6">
-            <Card className="shadow-xs border-slate-200">
+            <Card className="shadow-xs border-slate-200 bg-white">
               <CardHeader>
                 <CardTitle className="text-base">Exportar Reportes del Consultorio</CardTitle>
                 <CardDescription className="text-xs">
@@ -736,79 +739,83 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Rango de Fechas */}
-                <div className="flex flex-wrap items-center gap-3">
+                {/* Rango de Fechas con shadcn DatePicker */}
+                <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center space-x-2">
                     <Label className="text-xs font-semibold text-slate-600">Desde:</Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={reportStartDate}
-                      onChange={(e) => setReportStartDate(e.target.value)}
-                      className="w-auto h-9 text-xs font-medium rounded-xl"
+                      onChange={setReportStartDate}
+                      className="w-[200px]"
                     />
                   </div>
 
                   <div className="flex items-center space-x-2">
                     <Label className="text-xs font-semibold text-slate-600">Hasta:</Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={reportEndDate}
-                      onChange={(e) => setReportEndDate(e.target.value)}
-                      className="w-auto h-9 text-xs font-medium rounded-xl"
+                      onChange={setReportEndDate}
+                      className="w-[200px]"
                     />
                   </div>
 
                   <div className="flex items-center space-x-1.5">
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       size="sm"
                       onClick={setRangeToday}
-                      className="text-xs h-8"
+                      className="text-xs h-9 rounded-xl cursor-pointer hover:bg-slate-100 shadow-2xs"
                     >
                       Hoy
                     </Button>
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       size="sm"
                       onClick={setRangeLast7Days}
-                      className="text-xs h-8"
+                      className="text-xs h-9 rounded-xl cursor-pointer hover:bg-slate-100 shadow-2xs"
                     >
                       Últimos 7 Días
                     </Button>
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       size="sm"
                       onClick={setRangeThisMonth}
-                      className="text-xs h-8"
+                      className="text-xs h-9 rounded-xl cursor-pointer hover:bg-slate-100 shadow-2xs"
                     >
                       Este Mes
                     </Button>
                   </div>
                 </div>
 
-                {/* Botones de Descarga */}
+                {/* Botones de Descarga con Button asChild */}
                 <div className="pt-2 flex flex-wrap gap-4">
-                  <a
-                    href={`/api/reports/excel?startDate=${reportStartDate}&endDate=${reportEndDate}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Button
+                    asChild
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs cursor-pointer transition font-semibold h-10 px-5"
                   >
-                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs">
+                    <a
+                      href={`/api/reports/excel?startDate=${reportStartDate}&endDate=${reportEndDate}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <FileSpreadsheet className="w-4 h-4 mr-2" />
                       Descargar Excel (.xlsx)
-                    </Button>
-                  </a>
+                    </a>
+                  </Button>
 
-                  <a
-                    href={`/api/reports/pdf?startDate=${reportStartDate}&endDate=${reportEndDate}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Button
+                    asChild
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-xs cursor-pointer transition font-semibold h-10 px-5"
                   >
-                    <Button className="rounded-xl shadow-xs">
+                    <a
+                      href={`/api/reports/pdf?startDate=${reportStartDate}&endDate=${reportEndDate}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <FileText className="w-4 h-4 mr-2" />
                       Descargar PDF (.pdf)
-                    </Button>
-                  </a>
+                    </a>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -816,19 +823,24 @@ export default function DashboardPage() {
         </Tabs>
       </main>
 
-      {/* DIÁLOGO SHADCN: GESTIÓN DE HORARIOS SEMANALES */}
+      {/* DIÁLOGO SHADCN MEJORADO: GESTIÓN DE HORARIOS SEMANALES */}
       <Dialog
         open={Boolean(managingDoctor)}
         onOpenChange={(open) => {
           if (!open) setManagingDoctor(null);
         }}
       >
-        <DialogContent className="max-w-lg rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-base">
-              Turnos Semanales: {managingDoctor?.name}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
+        <DialogContent className="max-w-lg rounded-2xl p-6 shadow-2xl border-slate-200">
+          <DialogHeader className="space-y-1.5 pb-2">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-primary flex items-center justify-center">
+                <CalendarDays className="w-4 h-4" />
+              </div>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                Turnos Semanales: {managingDoctor?.name}
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-xs text-slate-500">
               Configurá los días y rangos horarios recurrentes en los que pasa consulta.
             </DialogDescription>
           </DialogHeader>
@@ -838,60 +850,83 @@ export default function DashboardPage() {
               Cargando horarios configurados...
             </div>
           ) : (
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1 py-1">
               {doctorSchedules.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-4">
-                  Sin turnos configurados aún. Presioná "Agregar Turno" abajo.
-                </p>
+                <div className="p-6 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200">
+                  <p className="text-xs text-slate-500 font-medium">
+                    Sin turnos configurados aún.
+                  </p>
+                  <p className="text-2xs text-slate-400 mt-0.5">
+                    Hacé clic en "Agregar Turno" para añadir el primer horario.
+                  </p>
+                </div>
               ) : (
                 doctorSchedules.map((slot, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center space-x-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs"
+                    className="flex items-center space-x-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200 shadow-2xs transition hover:border-slate-300"
                   >
-                    {/* Día de la semana */}
-                    <select
-                      value={slot.dayOfWeek}
-                      onChange={(e) =>
-                        updateScheduleSlot(idx, 'dayOfWeek', parseInt(e.target.value))
-                      }
-                      className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-700 outline-none text-xs"
-                    >
-                      {DIAS_SEMANA.map((name, dayIndex) => (
-                        <option key={dayIndex} value={dayIndex}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
+                    {/* Selector de Día shadcn Select */}
+                    <div className="w-[140px]">
+                      <Select
+                        value={String(slot.dayOfWeek)}
+                        onValueChange={(val) =>
+                          updateScheduleSlot(idx, 'dayOfWeek', parseInt(val))
+                        }
+                      >
+                        <SelectTrigger className="w-full bg-white text-xs h-9 font-medium shadow-2xs rounded-lg">
+                          <SelectValue placeholder="Día" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl shadow-lg border-slate-200">
+                          {DIAS_SEMANA.map((name, dayIndex) => (
+                            <SelectItem
+                              key={dayIndex}
+                              value={String(dayIndex)}
+                              className="text-xs font-medium cursor-pointer"
+                            >
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
                     {/* Hora de inicio */}
-                    <Input
-                      type="time"
-                      value={slot.startTime}
-                      onChange={(e) => updateScheduleSlot(idx, 'startTime', e.target.value)}
-                      className="h-8 w-24 bg-white text-xs font-mono"
-                    />
+                    <div className="flex items-center space-x-1">
+                      <Input
+                        type="time"
+                        value={slot.startTime}
+                        onChange={(e) =>
+                          updateScheduleSlot(idx, 'startTime', e.target.value)
+                        }
+                        className="h-9 w-24 bg-white text-xs font-mono text-center rounded-lg shadow-2xs"
+                      />
+                    </div>
 
-                    <span className="text-slate-400">a</span>
+                    <span className="text-xs text-slate-400 font-medium px-0.5">a</span>
 
                     {/* Hora de fin */}
-                    <Input
-                      type="time"
-                      value={slot.endTime}
-                      onChange={(e) => updateScheduleSlot(idx, 'endTime', e.target.value)}
-                      className="h-8 w-24 bg-white text-xs font-mono"
-                    />
+                    <div className="flex items-center space-x-1">
+                      <Input
+                        type="time"
+                        value={slot.endTime}
+                        onChange={(e) =>
+                          updateScheduleSlot(idx, 'endTime', e.target.value)
+                        }
+                        className="h-9 w-24 bg-white text-xs font-mono text-center rounded-lg shadow-2xs"
+                      />
+                    </div>
 
                     {/* Botón eliminar turno */}
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon-xs"
+                      size="icon-sm"
                       onClick={() => removeScheduleSlot(idx)}
-                      className="text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                      className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer rounded-lg h-9 w-9 shrink-0 ml-auto transition"
                       title="Eliminar turno"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 ))
@@ -901,7 +936,7 @@ export default function DashboardPage() {
                 type="button"
                 variant="outline"
                 onClick={addScheduleSlot}
-                className="w-full border-dashed rounded-xl text-xs h-9"
+                className="w-full border-dashed border-slate-300 hover:border-primary hover:text-primary hover:bg-primary/5 cursor-pointer rounded-xl text-xs h-10 font-semibold transition"
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
                 Agregar Turno
@@ -909,12 +944,12 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-0 pt-3 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
               onClick={() => setManagingDoctor(null)}
-              className="rounded-xl text-xs"
+              className="rounded-xl text-xs cursor-pointer hover:bg-slate-100 transition"
             >
               Cancelar
             </Button>
@@ -922,7 +957,7 @@ export default function DashboardPage() {
               type="button"
               disabled={isSavingSchedules}
               onClick={handleSaveSchedules}
-              className="rounded-xl text-xs"
+              className="rounded-xl text-xs cursor-pointer hover:bg-primary/90 transition shadow-xs font-semibold"
             >
               <Save className="w-3.5 h-3.5 mr-1.5" />
               {isSavingSchedules ? 'Guardando...' : 'Guardar Horarios'}
