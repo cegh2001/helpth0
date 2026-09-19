@@ -58,7 +58,13 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
-import { formatLocalDate, addDaysToDateString } from '@/lib/date-utils';
+import { TimeSelect } from '@/components/ui/time-select';
+import {
+  formatLocalDate,
+  addDaysToDateString,
+  getDoctorDutyStatus,
+  getCurrentTimeString,
+} from '@/lib/date-utils';
 
 interface ScheduleItem {
   startTime: string;
@@ -186,6 +192,32 @@ export default function DashboardPage() {
   const setDateToToday = () => {
     setSelectedDate(formatLocalDate());
   };
+
+  // Hora local actual en tiempo real para verificar turnos activos
+  const [currentTime, setCurrentTime] = useState<string>(() => getCurrentTimeString());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(getCurrentTimeString());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const isSelectedDateToday = useMemo(() => {
+    return selectedDate === formatLocalDate();
+  }, [selectedDate]);
+
+  const activeNowCount = useMemo(() => {
+    if (!overview?.doctors) return 0;
+    return overview.doctors.filter(
+      (d) => getDoctorDutyStatus(d.schedules, isSelectedDateToday, currentTime) === 'on_duty'
+    ).length;
+  }, [overview?.doctors, isSelectedDateToday, currentTime]);
+
+  const scheduledTodayCount = useMemo(() => {
+    if (!overview?.doctors) return 0;
+    return overview.doctors.filter((d) => d.scheduledToday).length;
+  }, [overview?.doctors]);
 
   // Médicos filtrados en Recepción Diaria
   const filteredDeskDoctors = useMemo(() => {
@@ -531,13 +563,16 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Médicos de Turno Hoy
+                  Médicos en Consulta Ahora
                 </p>
-                <p className="text-3xl font-extrabold text-slate-900 mt-0.5">
-                  {loading
-                    ? '...'
-                    : overview?.doctors.filter((d) => d.scheduledToday).length ?? 0}
-                </p>
+                <div className="flex items-baseline space-x-2 mt-0.5">
+                  <p className="text-3xl font-extrabold text-slate-900">
+                    {loading ? '...' : activeNowCount}
+                  </p>
+                  <span className="text-xs text-slate-500 font-medium">
+                    ({scheduledTodayCount} programados {isSelectedDateToday ? 'hoy' : 'este día'})
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -660,47 +695,64 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredDeskDoctors.map((doc) => (
-                  <Card
-                    key={doc.doctorId}
-                    className={`transition-all shadow-xs ${
-                      doc.scheduledToday
-                        ? 'border-blue-300 ring-1 ring-blue-100 bg-white'
-                        : 'border-slate-200 bg-white/90'
-                    }`}
-                  >
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h3 className="font-bold text-base text-slate-900">
-                              {doc.doctorName}
-                            </h3>
-                            {doc.scheduledToday ? (
-                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold text-xs hover:bg-emerald-50">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5 inline-block"></span>
-                                De Turno
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-slate-500 text-xs">
-                                Fuera de Turno
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-slate-500 font-medium">{doc.specialty}</p>
+                {filteredDeskDoctors.map((doc) => {
+                  const dutyStatus = getDoctorDutyStatus(
+                    doc.schedules,
+                    isSelectedDateToday,
+                    currentTime
+                  );
 
-                          {/* Horario del Día */}
-                          <div className="mt-2 flex items-center space-x-1.5 text-xs text-slate-600">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
-                            <span>
-                              {doc.schedules.length > 0
-                                ? doc.schedules
-                                    .map((s) => `${s.startTime} - ${s.endTime}`)
-                                    .join(', ')
-                                : 'Sin turno programado para hoy'}
-                            </span>
+                  return (
+                    <Card
+                      key={doc.doctorId}
+                      className={`transition-all shadow-xs ${
+                        dutyStatus === 'on_duty'
+                          ? 'border-emerald-300 ring-2 ring-emerald-100 bg-white'
+                          : doc.scheduledToday
+                          ? 'border-slate-200 bg-white'
+                          : 'border-slate-200 bg-slate-50/70'
+                      }`}
+                    >
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                              <h3 className="font-bold text-base text-slate-900">
+                                {doc.doctorName}
+                              </h3>
+                              {dutyStatus === 'on_duty' ? (
+                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold text-xs hover:bg-emerald-50">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5 inline-block"></span>
+                                  En Turno Ahora
+                                </Badge>
+                              ) : dutyStatus === 'completed' ? (
+                                <Badge variant="outline" className="bg-amber-50/80 text-amber-700 border-amber-200 text-xs font-medium">
+                                  Turno Concluido
+                                </Badge>
+                              ) : dutyStatus === 'upcoming' ? (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs font-medium">
+                                  {isSelectedDateToday ? 'Turno Próximo' : 'Programado'}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-slate-400 border-slate-200 text-xs">
+                                  Sin Turno
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">{doc.specialty}</p>
+
+                            {/* Horario del Día */}
+                            <div className="mt-2 flex items-center space-x-1.5 text-xs text-slate-600">
+                              <Clock className="w-3.5 h-3.5 text-slate-400" />
+                              <span>
+                                {doc.schedules.length > 0
+                                  ? doc.schedules
+                                      .map((s) => `${s.startTime} - ${s.endTime}`)
+                                      .join(', ')
+                                  : 'Sin turno programado para este día'}
+                              </span>
+                            </div>
                           </div>
-                        </div>
 
                         {/* Contador de Pacientes */}
                         <div className="flex flex-col items-end space-y-1">
@@ -760,7 +812,8 @@ export default function DashboardPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                );
+              })}
               </div>
             )}
           </TabsContent>
@@ -1224,31 +1277,19 @@ export default function DashboardPage() {
                       </Select>
                     </div>
 
-                    {/* Hora de inicio */}
-                    <div className="flex items-center space-x-1">
-                      <Input
-                        type="time"
-                        value={slot.startTime}
-                        onChange={(e) =>
-                          updateScheduleSlot(idx, 'startTime', e.target.value)
-                        }
-                        className="h-9 w-24 bg-white text-xs font-mono text-center rounded-lg shadow-2xs cursor-pointer"
-                      />
-                    </div>
+                    {/* Hora de inicio shadcn TimeSelect */}
+                    <TimeSelect
+                      value={slot.startTime}
+                      onChange={(val) => updateScheduleSlot(idx, 'startTime', val)}
+                    />
 
                     <span className="text-xs text-slate-400 font-medium px-0.5">a</span>
 
-                    {/* Hora de fin */}
-                    <div className="flex items-center space-x-1">
-                      <Input
-                        type="time"
-                        value={slot.endTime}
-                        onChange={(e) =>
-                          updateScheduleSlot(idx, 'endTime', e.target.value)
-                        }
-                        className="h-9 w-24 bg-white text-xs font-mono text-center rounded-lg shadow-2xs cursor-pointer"
-                      />
-                    </div>
+                    {/* Hora de fin shadcn TimeSelect */}
+                    <TimeSelect
+                      value={slot.endTime}
+                      onChange={(val) => updateScheduleSlot(idx, 'endTime', val)}
+                    />
 
                     {/* Botón eliminar turno */}
                     <Button
