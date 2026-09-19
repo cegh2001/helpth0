@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
@@ -13,6 +13,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+
+import { parseLocalDate, formatLocalDate } from '@/lib/date-utils';
 
 export interface DatePickerProps {
   value: string; // YYYY-MM-DD
@@ -34,7 +36,7 @@ export function DatePicker({
   const selectedDate = React.useMemo(() => {
     if (!value) return undefined;
     try {
-      const parsed = parseISO(value);
+      const parsed = parseLocalDate(value);
       return isNaN(parsed.getTime()) ? undefined : parsed;
     } catch {
       return undefined;
@@ -43,10 +45,7 @@ export function DatePicker({
 
   const handleSelect = (date: Date | undefined) => {
     if (!date) return;
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    onChange(`${year}-${month}-${day}`);
+    onChange(formatLocalDate(date));
     setOpen(false);
   };
 

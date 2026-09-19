@@ -3,11 +3,12 @@ import {
   generateReportDataUseCase,
   pdfExporter,
 } from '@/infrastructure/container';
+import { formatLocalDate } from '@/lib/date-utils';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate();
     const startDate = searchParams.get('startDate') || today;
     const endDate = searchParams.get('endDate') || today;
 

@@ -58,6 +58,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
+import { formatLocalDate, addDaysToDateString } from '@/lib/date-utils';
 
 interface ScheduleItem {
   startTime: string;
@@ -100,7 +101,7 @@ const DIAS_SEMANA = [
 
 export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    return formatLocalDate();
   });
 
   const [overview, setOverview] = useState<DailyOverviewData | null>(null);
@@ -145,10 +146,10 @@ export default function DashboardPage() {
   const [reportStartDate, setReportStartDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(1);
-    return d.toISOString().split('T')[0];
+    return formatLocalDate(d);
   });
   const [reportEndDate, setReportEndDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    return formatLocalDate();
   });
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
@@ -179,13 +180,11 @@ export default function DashboardPage() {
 
   // Navegación de fecha
   const changeDateByDays = (days: number) => {
-    const current = new Date(selectedDate + 'T00:00:00');
-    current.setDate(current.getDate() + days);
-    setSelectedDate(current.toISOString().split('T')[0]);
+    setSelectedDate((prev) => addDaysToDateString(prev, days));
   };
 
   const setDateToToday = () => {
-    setSelectedDate(new Date().toISOString().split('T')[0]);
+    setSelectedDate(formatLocalDate());
   };
 
   // Médicos filtrados en Recepción Diaria
@@ -408,7 +407,7 @@ export default function DashboardPage() {
 
   // Rango de fechas predefinidos
   const setRangeToday = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate();
     setReportStartDate(today);
     setReportEndDate(today);
   };
@@ -417,15 +416,15 @@ export default function DashboardPage() {
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - 6);
-    setReportStartDate(start.toISOString().split('T')[0]);
-    setReportEndDate(end.toISOString().split('T')[0]);
+    setReportStartDate(formatLocalDate(start));
+    setReportEndDate(formatLocalDate(end));
   };
 
   const setRangeThisMonth = () => {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    setReportStartDate(start.toISOString().split('T')[0]);
-    setReportEndDate(now.toISOString().split('T')[0]);
+    setReportStartDate(formatLocalDate(start));
+    setReportEndDate(formatLocalDate(now));
   };
 
   return (
