@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Users,
   Clock,
@@ -19,6 +19,10 @@ import {
   Download,
   CalendarDays,
   Trash2,
+  Pencil,
+  Search,
+  X,
+  AlertTriangle,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -107,10 +111,29 @@ export default function DashboardPage() {
     text: string;
   } | null>(null);
 
+  // Búsquedas
+  const [searchDesk, setSearchDesk] = useState('');
+  const [searchDoctors, setSearchDoctors] = useState('');
+
   // Formulario nuevo médico
   const [newDocName, setNewDocName] = useState('');
   const [newDocSpecialty, setNewDocSpecialty] = useState('');
   const [isSubmittingDoctor, setIsSubmittingDoctor] = useState(false);
+
+  // Modal de edición de médico
+  const [editingDoctor, setEditingDoctor] = useState<{
+    id: string;
+    name: string;
+    specialty: string;
+  } | null>(null);
+  const [isUpdatingDoctor, setIsUpdatingDoctor] = useState(false);
+
+  // Modal de confirmación de eliminación de médico
+  const [deletingDoctor, setDeletingDoctor] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [isDeletingDoctor, setIsDeletingDoctor] = useState(false);
 
   // Modal de horarios
   const [managingDoctor, setManagingDoctor] = useState<{ id: string; name: string } | null>(null);
@@ -165,6 +188,30 @@ export default function DashboardPage() {
     setSelectedDate(new Date().toISOString().split('T')[0]);
   };
 
+  // Médicos filtrados en Recepción Diaria
+  const filteredDeskDoctors = useMemo(() => {
+    if (!overview?.doctors) return [];
+    if (!searchDesk.trim()) return overview.doctors;
+    const q = searchDesk.toLowerCase().trim();
+    return overview.doctors.filter(
+      (d) =>
+        d.doctorName.toLowerCase().includes(q) ||
+        d.specialty.toLowerCase().includes(q)
+    );
+  }, [overview?.doctors, searchDesk]);
+
+  // Médicos filtrados en Directorio
+  const filteredDirectoryDoctors = useMemo(() => {
+    if (!overview?.doctors) return [];
+    if (!searchDoctors.trim()) return overview.doctors;
+    const q = searchDoctors.toLowerCase().trim();
+    return overview.doctors.filter(
+      (d) =>
+        d.doctorName.toLowerCase().includes(q) ||
+        d.specialty.toLowerCase().includes(q)
+    );
+  }, [overview?.doctors, searchDoctors]);
+
   // Manejo de conteo de pacientes
   const handleCountChange = async (doctorId: string, newCount: number, notes?: string | null) => {
     if (newCount < 0) return;
@@ -202,7 +249,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Registro de médico
+  // Registrar médico
   const handleRegisterDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDocName.trim()) {
@@ -233,6 +280,61 @@ export default function DashboardPage() {
       showFeedback('error', 'Error de red al registrar médico');
     } finally {
       setIsSubmittingDoctor(false);
+    }
+  };
+
+  // Editar médico
+  const handleUpdateDoctor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDoctor || !editingDoctor.name.trim()) return;
+
+    setIsUpdatingDoctor(true);
+    try {
+      const res = await fetch('/api/doctors', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingDoctor.id,
+          name: editingDoctor.name.trim(),
+          specialty: editingDoctor.specialty.trim() || 'Medicina General',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback('success', 'Médico actualizado con éxito');
+        setEditingDoctor(null);
+        fetchOverview(selectedDate);
+      } else {
+        showFeedback('error', data.error || 'Error al actualizar médico');
+      }
+    } catch {
+      showFeedback('error', 'Error de red al actualizar médico');
+    } finally {
+      setIsUpdatingDoctor(false);
+    }
+  };
+
+  // Eliminar médico
+  const handleDeleteDoctor = async () => {
+    if (!deletingDoctor) return;
+
+    setIsDeletingDoctor(true);
+    try {
+      const res = await fetch(`/api/doctors?id=${deletingDoctor.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback('success', `Dr. ${deletingDoctor.name} eliminado con éxito`);
+        setDeletingDoctor(null);
+        fetchOverview(selectedDate);
+      } else {
+        showFeedback('error', data.error || 'Error al eliminar médico');
+      }
+    } catch {
+      showFeedback('error', 'Error de red al eliminar médico');
+    } finally {
+      setIsDeletingDoctor(false);
     }
   };
 
@@ -488,7 +590,7 @@ export default function DashboardPage() {
 
           {/* PESTAÑA 1: RECEPCIÓN DIARIA */}
           <TabsContent value="desk" className="mt-6 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
                   Conteo para el {DIAS_SEMANA[overview?.dayOfWeek ?? 0]}, {selectedDate}
@@ -497,6 +599,28 @@ export default function DashboardPage() {
                   Registrá el número de pacientes atendidos por cada médico durante su consulta.
                 </p>
               </div>
+
+              {/* Barra de Búsqueda Recepción */}
+              {overview && overview.doctors.length > 0 && (
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Buscar médico o especialidad..."
+                    value={searchDesk}
+                    onChange={(e) => setSearchDesk(e.target.value)}
+                    className="pl-9 pr-8 h-9 text-xs rounded-xl bg-white shadow-2xs"
+                  />
+                  {searchDesk && (
+                    <button
+                      onClick={() => setSearchDesk('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {loading ? (
@@ -520,9 +644,24 @@ export default function DashboardPage() {
                   Agregar Primer Médico
                 </Button>
               </Card>
+            ) : filteredDeskDoctors.length === 0 ? (
+              <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 space-y-2">
+                <Search className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="text-sm font-medium">
+                  No se encontraron médicos que coincidan con "{searchDesk}"
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSearchDesk('')}
+                  className="cursor-pointer text-xs rounded-xl"
+                >
+                  Limpiar búsqueda
+                </Button>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {overview?.doctors.map((doc) => (
+                {filteredDeskDoctors.map((doc) => (
                   <Card
                     key={doc.doctorId}
                     className={`transition-all shadow-xs ${
@@ -686,22 +825,61 @@ export default function DashboardPage() {
 
               {/* Lista de Médicos */}
               <div className="lg:col-span-2 space-y-4">
-                <h3 className="font-bold text-slate-900 text-base">
-                  Personal Médico del Consultorio
-                </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <h3 className="font-bold text-slate-900 text-base">
+                    Personal Médico del Consultorio
+                  </h3>
+
+                  {/* Buscador Directorio */}
+                  {overview && overview.doctors.length > 0 && (
+                    <div className="relative w-full sm:w-64">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        type="text"
+                        placeholder="Buscar por nombre o área..."
+                        value={searchDoctors}
+                        onChange={(e) => setSearchDoctors(e.target.value)}
+                        className="pl-9 pr-8 h-9 text-xs rounded-xl bg-white shadow-2xs"
+                      />
+                      {searchDoctors && (
+                        <button
+                          onClick={() => setSearchDoctors('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {overview?.doctors.length === 0 ? (
                   <Card className="p-8 text-center text-slate-400 border-dashed bg-white">
                     No hay médicos registrados. Agregá uno usando el formulario.
                   </Card>
+                ) : filteredDirectoryDoctors.length === 0 ? (
+                  <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 space-y-2">
+                    <Search className="w-8 h-8 text-slate-300 mx-auto" />
+                    <p className="text-sm font-medium">
+                      No se encontraron médicos para "{searchDoctors}"
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSearchDoctors('')}
+                      className="cursor-pointer text-xs rounded-xl"
+                    >
+                      Limpiar búsqueda
+                    </Button>
+                  </div>
                 ) : (
                   <div className="space-y-3">
-                    {overview?.doctors.map((doc) => (
+                    {filteredDirectoryDoctors.map((doc) => (
                       <Card
                         key={doc.doctorId}
                         className="shadow-xs border-slate-200 hover:border-slate-300 transition bg-white"
                       >
-                        <CardContent className="p-4 flex items-center justify-between">
+                        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div>
                             <h4 className="font-bold text-slate-900 text-sm">
                               {doc.doctorName}
@@ -711,15 +889,52 @@ export default function DashboardPage() {
                             </p>
                           </div>
 
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openScheduleManager(doc.doctorId, doc.doctorName)}
-                            className="rounded-xl text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all"
-                          >
-                            <CalendarDays className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                            Configurar Turnos Semanales
-                          </Button>
+                          <div className="flex items-center space-x-2">
+                            {/* Botón Editar Médico */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setEditingDoctor({
+                                  id: doc.doctorId,
+                                  name: doc.doctorName,
+                                  specialty: doc.specialty,
+                                })
+                              }
+                              title="Editar datos del médico"
+                              className="rounded-xl text-xs cursor-pointer hover:bg-slate-100 transition"
+                            >
+                              <Pencil className="w-3.5 h-3.5 mr-1 text-slate-600" />
+                              Editar
+                            </Button>
+
+                            {/* Botón Turnos Semanales */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openScheduleManager(doc.doctorId, doc.doctorName)}
+                              className="rounded-xl text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all"
+                            >
+                              <CalendarDays className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                              Turnos
+                            </Button>
+
+                            {/* Botón Eliminar Médico */}
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() =>
+                                setDeletingDoctor({
+                                  id: doc.doctorId,
+                                  name: doc.doctorName,
+                                })
+                              }
+                              title="Eliminar médico"
+                              className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer rounded-xl h-8 w-8 transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
@@ -823,7 +1038,126 @@ export default function DashboardPage() {
         </Tabs>
       </main>
 
-      {/* DIÁLOGO SHADCN MEJORADO: GESTIÓN DE HORARIOS SEMANALES */}
+      {/* MODAL: EDITAR MÉDICO */}
+      <Dialog
+        open={Boolean(editingDoctor)}
+        onOpenChange={(open) => {
+          if (!open) setEditingDoctor(null);
+        }}
+      >
+        <DialogContent className="max-w-md rounded-2xl p-6 shadow-2xl border-slate-200">
+          <DialogHeader className="space-y-1 pb-2">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-primary flex items-center justify-center">
+                <Pencil className="w-4 h-4" />
+              </div>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                Editar Datos del Médico
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-xs text-slate-500">
+              Modificá el nombre completo o especialidad del profesional.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingDoctor && (
+            <form onSubmit={handleUpdateDoctor} className="space-y-4 pt-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-name" className="text-xs font-semibold text-slate-700">
+                  Nombre Completo *
+                </Label>
+                <Input
+                  id="edit-name"
+                  type="text"
+                  required
+                  value={editingDoctor.name}
+                  onChange={(e) =>
+                    setEditingDoctor({ ...editingDoctor, name: e.target.value })
+                  }
+                  className="rounded-xl h-10 text-sm"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-spec" className="text-xs font-semibold text-slate-700">
+                  Especialidad / Área
+                </Label>
+                <Input
+                  id="edit-spec"
+                  type="text"
+                  value={editingDoctor.specialty}
+                  onChange={(e) =>
+                    setEditingDoctor({ ...editingDoctor, specialty: e.target.value })
+                  }
+                  className="rounded-xl h-10 text-sm"
+                />
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0 pt-3 border-t border-slate-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingDoctor(null)}
+                  className="rounded-xl text-xs cursor-pointer hover:bg-slate-100"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isUpdatingDoctor}
+                  className="rounded-xl text-xs cursor-pointer hover:bg-primary/90 font-semibold"
+                >
+                  {isUpdatingDoctor ? 'Guardando...' : 'Guardar Cambios'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: CONFIRMAR ELIMINACIÓN DE MÉDICO */}
+      <Dialog
+        open={Boolean(deletingDoctor)}
+        onOpenChange={(open) => {
+          if (!open) setDeletingDoctor(null);
+        }}
+      >
+        <DialogContent className="max-w-md rounded-2xl p-6 shadow-2xl border-slate-200">
+          <DialogHeader className="space-y-2">
+            <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto sm:mx-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              ¿Eliminar al Dr. {deletingDoctor?.name}?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 leading-relaxed">
+              Esta acción dará de baja definitiva al profesional médico y eliminará automáticamente sus turnos semanales y los conteos registrados asociados. Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeletingDoctor(null)}
+              className="rounded-xl text-xs cursor-pointer hover:bg-slate-100"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isDeletingDoctor}
+              onClick={handleDeleteDoctor}
+              className="rounded-xl text-xs cursor-pointer font-semibold shadow-xs"
+            >
+              {isDeletingDoctor ? 'Eliminando...' : 'Eliminar Médico'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIÁLOGO SHADCN: GESTIÓN DE HORARIOS SEMANALES */}
       <Dialog
         open={Boolean(managingDoctor)}
         onOpenChange={(open) => {
@@ -899,7 +1233,7 @@ export default function DashboardPage() {
                         onChange={(e) =>
                           updateScheduleSlot(idx, 'startTime', e.target.value)
                         }
-                        className="h-9 w-24 bg-white text-xs font-mono text-center rounded-lg shadow-2xs"
+                        className="h-9 w-24 bg-white text-xs font-mono text-center rounded-lg shadow-2xs cursor-pointer"
                       />
                     </div>
 
@@ -913,7 +1247,7 @@ export default function DashboardPage() {
                         onChange={(e) =>
                           updateScheduleSlot(idx, 'endTime', e.target.value)
                         }
-                        className="h-9 w-24 bg-white text-xs font-mono text-center rounded-lg shadow-2xs"
+                        className="h-9 w-24 bg-white text-xs font-mono text-center rounded-lg shadow-2xs cursor-pointer"
                       />
                     </div>
 

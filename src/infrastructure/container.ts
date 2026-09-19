@@ -6,6 +6,8 @@ import { ExcelJsReportExporter } from './exporters/exceljs-report.exporter';
 import { PdfKitReportExporter } from './exporters/pdfkit-report.exporter';
 
 import { RegisterDoctorUseCase } from '@/core/application/use-cases/doctor/register-doctor.use-case';
+import { UpdateDoctorUseCase } from '@/core/application/use-cases/doctor/update-doctor.use-case';
+import { DeleteDoctorUseCase } from '@/core/application/use-cases/doctor/delete-doctor.use-case';
 import { ListDoctorsUseCase } from '@/core/application/use-cases/doctor/list-doctors.use-case';
 import { SetDoctorSchedulesUseCase } from '@/core/application/use-cases/schedule/set-doctor-schedules.use-case';
 import { GetDoctorSchedulesUseCase } from '@/core/application/use-cases/schedule/get-doctor-schedules.use-case';
@@ -24,6 +26,8 @@ export const pdfExporter = new PdfKitReportExporter();
 
 // Application Use Cases
 export const registerDoctorUseCase = new RegisterDoctorUseCase(doctorRepository);
+export const updateDoctorUseCase = new UpdateDoctorUseCase(doctorRepository);
+export const deleteDoctorUseCase = new DeleteDoctorUseCase(doctorRepository);
 export const listDoctorsUseCase = new ListDoctorsUseCase(doctorRepository);
 export const setDoctorSchedulesUseCase = new SetDoctorSchedulesUseCase(
   doctorRepository,
