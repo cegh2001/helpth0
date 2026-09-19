@@ -4,50 +4,50 @@ import { ClinicReportData, ReportExporterPort } from '@/core/application/ports/r
 export class ExcelJsReportExporter implements ReportExporterPort {
   async exportToExcel(data: ClinicReportData): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'helpth0 Clinic System';
+    workbook.creator = 'Sistema Clínico helpth0';
     workbook.created = data.generatedAt;
 
-    // Sheet 1: Summary
-    const summarySheet = workbook.addWorksheet('Clinic Summary', {
+    // Hoja 1: Resumen
+    const summarySheet = workbook.addWorksheet('Resumen de Clínica', {
       views: [{ showGridLines: true }],
     });
 
-    // Header styling
+    // Encabezado
     summarySheet.mergeCells('A1:D1');
     const titleCell = summarySheet.getCell('A1');
-    titleCell.value = 'HELPTH0 CLINIC REPORT';
+    titleCell.value = 'REPORTE CLÍNICO HELPTH0';
     titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
     titleCell.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FF1E3A8A' }, // Deep blue
+      fgColor: { argb: 'FF1E3A8A' },
     };
     titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
     summarySheet.getRow(1).height = 30;
 
     summarySheet.addRow([]);
-    summarySheet.addRow(['Period:', `${data.startDate} to ${data.endDate}`]);
-    summarySheet.addRow(['Generated:', data.generatedAt.toISOString().replace('T', ' ').substring(0, 19)]);
-    summarySheet.addRow(['Total Patients:', data.totalPatientsPeriod]);
+    summarySheet.addRow(['Período:', `${data.startDate} al ${data.endDate}`]);
+    summarySheet.addRow(['Fecha de Emisión:', data.generatedAt.toISOString().replace('T', ' ').substring(0, 19)]);
+    summarySheet.addRow(['Total Pacientes:', data.totalPatientsPeriod]);
     summarySheet.getRow(3).font = { bold: true };
     summarySheet.getRow(4).font = { bold: true };
     summarySheet.getRow(5).font = { bold: true, size: 12 };
 
     summarySheet.addRow([]);
 
-    // Table Header
+    // Encabezados de Tabla
     const tableHeader = summarySheet.addRow([
-      'Doctor Name',
-      'Specialty',
-      'Weekly Schedule',
-      'Total Patients',
+      'Médico',
+      'Especialidad',
+      'Horario Semanal',
+      'Total Pacientes',
     ]);
     tableHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     tableHeader.eachCell((cell) => {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF2563EB' }, // Blue
+        fgColor: { argb: 'FF2563EB' },
       };
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
@@ -63,9 +63,9 @@ export class ExcelJsReportExporter implements ReportExporterPort {
       row.getCell(4).alignment = { horizontal: 'center' };
     }
 
-    // Totals Row
+    // Fila de Totales
     const totalRow = summarySheet.addRow([
-      'TOTAL',
+      'TOTAL GENERAL',
       '',
       '',
       data.totalPatientsPeriod,
@@ -81,30 +81,30 @@ export class ExcelJsReportExporter implements ReportExporterPort {
     });
 
     summarySheet.columns = [
-      { width: 25 },
-      { width: 22 },
-      { width: 40 },
-      { width: 16 },
+      { width: 28 },
+      { width: 24 },
+      { width: 45 },
+      { width: 18 },
     ];
 
-    // Sheet 2: Daily Breakdown
-    const detailSheet = workbook.addWorksheet('Daily Breakdown', {
+    // Hoja 2: Desglose Diario
+    const detailSheet = workbook.addWorksheet('Desglose Diario', {
       views: [{ showGridLines: true }],
     });
 
     const detailHeader = detailSheet.addRow([
-      'Date',
-      'Doctor',
-      'Specialty',
-      'Patients Seen',
-      'Notes',
+      'Fecha',
+      'Médico',
+      'Especialidad',
+      'Pacientes Atendidos',
+      'Observaciones',
     ]);
     detailHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     detailHeader.eachCell((cell) => {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF0D9488' }, // Teal
+        fgColor: { argb: 'FF0D9488' },
       };
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
@@ -124,10 +124,10 @@ export class ExcelJsReportExporter implements ReportExporterPort {
     }
 
     detailSheet.columns = [
-      { width: 15 },
-      { width: 25 },
-      { width: 20 },
       { width: 16 },
+      { width: 28 },
+      { width: 24 },
+      { width: 20 },
       { width: 35 },
     ];
 
@@ -136,7 +136,6 @@ export class ExcelJsReportExporter implements ReportExporterPort {
   }
 
   async exportToPdf(data: ClinicReportData): Promise<Buffer> {
-    // Delegate to PdfKit exporter
     throw new Error('Use PdfKitReportExporter for PDF generation');
   }
 }

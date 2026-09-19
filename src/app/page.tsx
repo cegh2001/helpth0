@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Calendar,
+  Calendar as CalendarIcon,
   Users,
   Clock,
   FileSpreadsheet,
@@ -19,7 +19,34 @@ import {
   Save,
   Download,
   CalendarDays,
+  Trash2,
 } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/card';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 interface ScheduleItem {
   startTime: string;
@@ -50,14 +77,14 @@ interface DoctorScheduleSetting {
   endTime: string;
 }
 
-const DAY_NAMES = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
+const DIAS_SEMANA = [
+  'Domingo',
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
 ];
 
 export default function DashboardPage() {
@@ -67,20 +94,24 @@ export default function DashboardPage() {
 
   const [overview, setOverview] = useState<DailyOverviewData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'desk' | 'doctors' | 'reports'>('desk');
-  const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('desk');
+  const [feedbackMessage, setFeedbackMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
-  // New Doctor Form State
+  // Formulario nuevo médico
   const [newDocName, setNewDocName] = useState('');
   const [newDocSpecialty, setNewDocSpecialty] = useState('');
   const [isSubmittingDoctor, setIsSubmittingDoctor] = useState(false);
 
-  // Schedule Management Modal State
+  // Modal de horarios
   const [managingDoctor, setManagingDoctor] = useState<{ id: string; name: string } | null>(null);
   const [doctorSchedules, setDoctorSchedules] = useState<DoctorScheduleSetting[]>([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [isSavingSchedules, setIsSavingSchedules] = useState(false);
 
-  // Reports Range State
+  // Filtros de reportes
   const [reportStartDate, setReportStartDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(1);
@@ -103,10 +134,10 @@ export default function DashboardPage() {
       if (data.success) {
         setOverview(data.data);
       } else {
-        showFeedback('error', data.error || 'Failed to fetch overview');
+        showFeedback('error', data.error || 'Error al cargar el resumen diario');
       }
-    } catch (err: any) {
-      showFeedback('error', 'Network error loading overview');
+    } catch {
+      showFeedback('error', 'Error de conexión al cargar datos');
     } finally {
       setLoading(false);
     }
@@ -116,7 +147,7 @@ export default function DashboardPage() {
     fetchOverview(selectedDate);
   }, [selectedDate, fetchOverview]);
 
-  // Date Navigation
+  // Navegación de fecha
   const changeDateByDays = (days: number) => {
     const current = new Date(selectedDate + 'T00:00:00');
     current.setDate(current.getDate() + days);
@@ -127,11 +158,10 @@ export default function DashboardPage() {
     setSelectedDate(new Date().toISOString().split('T')[0]);
   };
 
-  // Headcount Increment / Decrement / Input
+  // Manejo de conteo de pacientes
   const handleCountChange = async (doctorId: string, newCount: number, notes?: string | null) => {
     if (newCount < 0) return;
 
-    // Optimistic update
     if (overview) {
       const updatedDoctors = overview.doctors.map((d) => {
         if (d.doctorId === doctorId) {
@@ -156,20 +186,20 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        showFeedback('error', data.error || 'Failed to save count');
-        fetchOverview(selectedDate); // Revert
+        showFeedback('error', data.error || 'Error al guardar el conteo');
+        fetchOverview(selectedDate);
       }
     } catch {
-      showFeedback('error', 'Error syncing count');
+      showFeedback('error', 'Error al sincronizar con la base de datos');
       fetchOverview(selectedDate);
     }
   };
 
-  // Register Doctor
+  // Registro de médico
   const handleRegisterDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDocName.trim()) {
-      showFeedback('error', 'Doctor name is required');
+      showFeedback('error', 'El nombre del médico es obligatorio');
       return;
     }
 
@@ -180,26 +210,26 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newDocName,
-          specialty: newDocSpecialty || 'General',
+          specialty: newDocSpecialty || 'Medicina General',
         }),
       });
       const data = await res.json();
       if (data.success) {
-        showFeedback('success', `Registered Dr. ${data.data.name}`);
+        showFeedback('success', `Médico ${data.data.name} registrado con éxito`);
         setNewDocName('');
         setNewDocSpecialty('');
         fetchOverview(selectedDate);
       } else {
-        showFeedback('error', data.error || 'Failed to add doctor');
+        showFeedback('error', data.error || 'Error al registrar médico');
       }
     } catch {
-      showFeedback('error', 'Failed to register doctor');
+      showFeedback('error', 'Error de red al registrar médico');
     } finally {
       setIsSubmittingDoctor(false);
     }
   };
 
-  // Open Schedule Manager
+  // Abrir modal de turnos
   const openScheduleManager = async (doctorId: string, doctorName: string) => {
     setManagingDoctor({ id: doctorId, name: doctorName });
     setLoadingSchedules(true);
@@ -218,9 +248,10 @@ export default function DashboardPage() {
     }
   };
 
-  // Save Schedules
+  // Guardar turnos
   const handleSaveSchedules = async () => {
     if (!managingDoctor) return;
+    setIsSavingSchedules(true);
     try {
       const res = await fetch('/api/schedules', {
         method: 'POST',
@@ -232,14 +263,16 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (data.success) {
-        showFeedback('success', `Updated schedules for ${managingDoctor.name}`);
+        showFeedback('success', `Horarios actualizados para ${managingDoctor.name}`);
         setManagingDoctor(null);
         fetchOverview(selectedDate);
       } else {
-        showFeedback('error', data.error || 'Failed to update schedule');
+        showFeedback('error', data.error || 'Error al guardar horarios');
       }
     } catch {
-      showFeedback('error', 'Network error saving schedule');
+      showFeedback('error', 'Error de red al guardar horarios');
+    } finally {
+      setIsSavingSchedules(false);
     }
   };
 
@@ -264,7 +297,7 @@ export default function DashboardPage() {
     setDoctorSchedules(updated);
   };
 
-  // Preset Ranges for Reports
+  // Rango de fechas predefinidos
   const setRangeToday = () => {
     const today = new Date().toISOString().split('T')[0];
     setReportStartDate(today);
@@ -288,11 +321,11 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Top Navbar */}
+      {/* Barra de Navegación Superior */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/30">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-sm">
               <Activity className="w-6 h-6" />
             </div>
             <div>
@@ -300,27 +333,28 @@ export default function DashboardPage() {
                 <h1 className="text-xl font-bold tracking-tight text-slate-900">
                   helpth0
                 </h1>
-                <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-semibold border border-blue-200">
-                  Clinic Core
-                </span>
+                <Badge variant="secondary" className="text-xs font-semibold">
+                  Monolito Local
+                </Badge>
               </div>
               <p className="text-xs text-slate-500">
-                Medical Shift & Patient Headcount Management
+                Control de Turnos Médicos y Conteo Diario de Pacientes
               </p>
             </div>
           </div>
 
-          {/* Date Selector Navigation */}
-          <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <button
+          {/* Navegador de Fecha */}
+          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={() => changeDateByDays(-1)}
-              className="p-1.5 hover:bg-white rounded-lg transition-colors text-slate-600 hover:text-slate-900"
-              title="Previous Day"
+              title="Día Anterior"
             >
               <ChevronLeft className="w-4 h-4" />
-            </button>
+            </Button>
             <div className="flex items-center space-x-2 px-2">
-              <Calendar className="w-4 h-4 text-blue-600" />
+              <CalendarIcon className="w-4 h-4 text-primary" />
               <input
                 type="date"
                 value={selectedDate}
@@ -328,26 +362,29 @@ export default function DashboardPage() {
                 className="bg-transparent font-medium text-sm text-slate-800 outline-none cursor-pointer"
               />
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={() => changeDateByDays(1)}
-              className="p-1.5 hover:bg-white rounded-lg transition-colors text-slate-600 hover:text-slate-900"
-              title="Next Day"
+              title="Día Siguiente"
             >
               <ChevronRight className="w-4 h-4" />
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={setDateToToday}
-              className="px-2.5 py-1 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 rounded-lg shadow-2xs border border-slate-200"
+              className="text-xs font-semibold h-7"
             >
-              Today
-            </button>
+              Hoy
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Main Container */}
+      {/* Contenedor Principal */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
-        {/* Toast Alert */}
+        {/* Alerta Toast */}
         {feedbackMessage && (
           <div
             className={`p-4 rounded-xl flex items-center space-x-3 transition-all ${
@@ -365,510 +402,534 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Metrics Overview Cards */}
+        {/* Tarjetas KPI de Métricas */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Patients Today
-              </p>
-              <p className="text-3xl font-extrabold text-slate-900 mt-0.5">
-                {loading ? '...' : overview?.totalPatientsToday ?? 0}
-              </p>
-            </div>
-          </div>
+          <Card className="shadow-xs border-slate-200">
+            <CardContent className="p-5 flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Pacientes Hoy
+                </p>
+                <p className="text-3xl font-extrabold text-slate-900 mt-0.5">
+                  {loading ? '...' : overview?.totalPatientsToday ?? 0}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Doctors On Duty Today
-              </p>
-              <p className="text-3xl font-extrabold text-slate-900 mt-0.5">
-                {loading
-                  ? '...'
-                  : overview?.doctors.filter((d) => d.scheduledToday).length ?? 0}
-              </p>
-            </div>
-          </div>
+          <Card className="shadow-xs border-slate-200">
+            <CardContent className="p-5 flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Médicos de Turno Hoy
+                </p>
+                <p className="text-3xl font-extrabold text-slate-900 mt-0.5">
+                  {loading
+                    ? '...'
+                    : overview?.doctors.filter((d) => d.scheduledToday).length ?? 0}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center space-x-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Stethoscope className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Registered Doctors
-              </p>
-              <p className="text-3xl font-extrabold text-slate-900 mt-0.5">
-                {loading ? '...' : overview?.doctors.length ?? 0}
-              </p>
-            </div>
-          </div>
+          <Card className="shadow-xs border-slate-200">
+            <CardContent className="p-5 flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <Stethoscope className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Médicos Registrados
+                </p>
+                <p className="text-3xl font-extrabold text-slate-900 mt-0.5">
+                  {loading ? '...' : overview?.doctors.length ?? 0}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-200 space-x-8">
-          <button
-            onClick={() => setActiveTab('desk')}
-            className={`pb-4 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors ${
-              activeTab === 'desk'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-            <span>Daily Reception Desk</span>
-          </button>
+        {/* Pestañas de Navegación shadcn */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="bg-slate-200/70 p-1 rounded-xl h-auto">
+            <TabsTrigger
+              value="desk"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2 px-4 text-xs font-semibold flex items-center space-x-2"
+            >
+              <Activity className="w-4 h-4" />
+              <span>Recepción Diaria</span>
+            </TabsTrigger>
 
-          <button
-            onClick={() => setActiveTab('doctors')}
-            className={`pb-4 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors ${
-              activeTab === 'doctors'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Stethoscope className="w-4 h-4" />
-            <span>Doctors & Schedules</span>
-          </button>
+            <TabsTrigger
+              value="doctors"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2 px-4 text-xs font-semibold flex items-center space-x-2"
+            >
+              <Stethoscope className="w-4 h-4" />
+              <span>Médicos y Horarios</span>
+            </TabsTrigger>
 
-          <button
-            onClick={() => setActiveTab('reports')}
-            className={`pb-4 text-sm font-semibold flex items-center space-x-2 border-b-2 transition-colors ${
-              activeTab === 'reports'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Download className="w-4 h-4" />
-            <span>Export Reports (Excel / PDF)</span>
-          </button>
-        </div>
+            <TabsTrigger
+              value="reports"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2 px-4 text-xs font-semibold flex items-center space-x-2"
+            >
+              <Download className="w-4 h-4" />
+              <span>Reportes (Excel / PDF)</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* TAB 1: DAILY RECEPTION DESK */}
-        {activeTab === 'desk' && (
-          <div className="space-y-4">
+          {/* PESTAÑA 1: RECEPCIÓN DIARIA */}
+          <TabsContent value="desk" className="mt-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  Headcounts for {DAY_NAMES[overview?.dayOfWeek ?? 0]}, {selectedDate}
+                  Conteo para el {DIAS_SEMANA[overview?.dayOfWeek ?? 0]}, {selectedDate}
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Record how many patients each doctor attended during their clinic session.
+                  Registrá el número de pacientes atendidos por cada médico durante su consulta.
                 </p>
               </div>
             </div>
 
             {loading ? (
-              <div className="py-16 text-center text-slate-400">Loading daily overview...</div>
+              <div className="py-16 text-center text-slate-400">Cargando datos del día...</div>
             ) : overview?.doctors.length === 0 ? (
-              <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-3">
+              <Card className="border-dashed p-12 text-center space-y-4">
                 <Stethoscope className="w-12 h-12 text-slate-300 mx-auto" />
-                <h3 className="text-base font-semibold text-slate-800">
-                  No doctors registered yet
-                </h3>
-                <p className="text-sm text-slate-500 max-w-md mx-auto">
-                  Go to the Doctors & Schedules tab to add medical staff and set up their working hours.
-                </p>
-                <button
+                <div>
+                  <h3 className="text-base font-semibold text-slate-800">
+                    No hay médicos registrados aún
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                    Ingresá en la pestaña de Médicos y Horarios para agregar al personal y configurar sus turnos.
+                  </p>
+                </div>
+                <Button
                   onClick={() => setActiveTab('doctors')}
-                  className="mt-2 inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition"
+                  className="rounded-xl shadow-xs"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Add First Doctor
-                </button>
-              </div>
+                  Agregar Primer Médico
+                </Button>
+              </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {overview?.doctors.map((doc) => (
-                  <div
+                  <Card
                     key={doc.doctorId}
-                    className={`bg-white rounded-2xl p-5 border transition-all shadow-xs ${
+                    className={`transition-all shadow-xs ${
                       doc.scheduledToday
-                        ? 'border-blue-200 ring-1 ring-blue-100'
-                        : 'border-slate-200 opacity-90'
+                        ? 'border-blue-300 ring-1 ring-blue-100 bg-white'
+                        : 'border-slate-200 bg-white/80'
                     }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-bold text-base text-slate-900">
-                            {doc.doctorName}
-                          </h3>
-                          {doc.scheduledToday ? (
-                            <span className="bg-emerald-50 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center space-x-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                              <span>On Duty</span>
-                            </span>
-                          ) : (
-                            <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full">
-                              Off Schedule
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 font-medium">{doc.specialty}</p>
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <h3 className="font-bold text-base text-slate-900">
+                              {doc.doctorName}
+                            </h3>
+                            {doc.scheduledToday ? (
+                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold text-xs hover:bg-emerald-50">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5 inline-block"></span>
+                                De Turno
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-slate-500 text-xs">
+                                Fuera de Turno
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium">{doc.specialty}</p>
 
-                        {/* Shift Times */}
-                        <div className="mt-2 flex items-center space-x-1.5 text-xs text-slate-600">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          <span>
-                            {doc.schedules.length > 0
-                              ? doc.schedules
-                                  .map((s) => `${s.startTime} - ${s.endTime}`)
-                                  .join(', ')
-                              : 'No shift scheduled for today'}
+                          {/* Horario del Día */}
+                          <div className="mt-2 flex items-center space-x-1.5 text-xs text-slate-600">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            <span>
+                              {doc.schedules.length > 0
+                                ? doc.schedules
+                                    .map((s) => `${s.startTime} - ${s.endTime}`)
+                                    .join(', ')
+                                : 'Sin turno programado para hoy'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Contador de Pacientes */}
+                        <div className="flex flex-col items-end space-y-1">
+                          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                            Pacientes
                           </span>
+                          <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-sm"
+                              onClick={() =>
+                                handleCountChange(doc.doctorId, Math.max(0, doc.patientCount - 1))
+                              }
+                              title="Restar (-1)"
+                              className="h-8 w-8 rounded-lg"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </Button>
+
+                            <Input
+                              type="number"
+                              min="0"
+                              value={doc.patientCount}
+                              onChange={(e) =>
+                                handleCountChange(doc.doctorId, parseInt(e.target.value) || 0)
+                              }
+                              className="w-14 h-8 text-center font-bold text-base bg-transparent border-0 shadow-none focus-visible:ring-0 p-0"
+                            />
+
+                            <Button
+                              type="button"
+                              size="icon-sm"
+                              onClick={() => handleCountChange(doc.doctorId, doc.patientCount + 1)}
+                              title="Sumar (+1)"
+                              className="h-8 w-8 rounded-lg"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Counter Controls */}
-                      <div className="flex flex-col items-end space-y-1">
-                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                          Patients
-                        </span>
-                        <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleCountChange(doc.doctorId, Math.max(0, doc.patientCount - 1))
+                      {/* Observaciones */}
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center space-x-2">
+                        <Input
+                          type="text"
+                          placeholder="Observaciones del día (opcional)..."
+                          defaultValue={doc.notes || ''}
+                          onBlur={(e) => {
+                            if (e.target.value !== (doc.notes || '')) {
+                              handleCountChange(doc.doctorId, doc.patientCount, e.target.value);
                             }
-                            className="w-8 h-8 rounded-lg bg-white hover:bg-slate-50 text-slate-700 font-bold flex items-center justify-center shadow-2xs border border-slate-200 active:scale-95 transition"
-                            title="Decrease (-1)"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-
-                          <input
-                            type="number"
-                            min="0"
-                            value={doc.patientCount}
-                            onChange={(e) =>
-                              handleCountChange(doc.doctorId, parseInt(e.target.value) || 0)
-                            }
-                            className="w-14 text-center font-bold text-lg bg-transparent text-slate-900 outline-none"
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() => handleCountChange(doc.doctorId, doc.patientCount + 1)}
-                            className="w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center shadow-xs active:scale-95 transition"
-                            title="Increase (+1)"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                          }}
+                          className="h-8 text-xs bg-slate-50/50"
+                        />
                       </div>
-                    </div>
-
-                    {/* Notes Field */}
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center space-x-2">
-                      <input
-                        type="text"
-                        placeholder="Add notes for today (optional)..."
-                        defaultValue={doc.notes || ''}
-                        onBlur={(e) => {
-                          if (e.target.value !== (doc.notes || '')) {
-                            handleCountChange(doc.doctorId, doc.patientCount, e.target.value);
-                          }
-                        }}
-                        className="w-full text-xs text-slate-700 bg-slate-50 hover:bg-white focus:bg-white px-3 py-1.5 rounded-lg border border-slate-200 focus:border-blue-400 outline-none transition"
-                      />
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
-          </div>
-        )}
+          </TabsContent>
 
-        {/* TAB 2: DOCTORS & SCHEDULES */}
-        {activeTab === 'doctors' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Add Doctor Form */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs h-fit space-y-4">
-              <div className="flex items-center space-x-2">
-                <UserPlus className="w-5 h-5 text-blue-600" />
-                <h3 className="font-bold text-slate-900">Register New Doctor</h3>
-              </div>
-              <p className="text-xs text-slate-500">
-                Add medical practitioners to your clinic directory.
-              </p>
-
-              <form onSubmit={handleRegisterDoctor} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Doctor Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Dr. Jane Foster"
-                    value={newDocName}
-                    onChange={(e) => setNewDocName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Specialty / Department
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Pediatrics, Cardiology"
-                    value={newDocSpecialty}
-                    onChange={(e) => setNewDocSpecialty(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmittingDoctor}
-                  className="w-full mt-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-xs transition flex items-center justify-center space-x-2 disabled:opacity-50"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>{isSubmittingDoctor ? 'Saving...' : 'Register Doctor'}</span>
-                </button>
-              </form>
-            </div>
-
-            {/* Right: Doctor List & Schedule Management */}
-            <div className="lg:col-span-2 space-y-4">
-              <h3 className="font-bold text-slate-900 text-base">Clinic Medical Staff</h3>
-
-              {overview?.doctors.length === 0 ? (
-                <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-400">
-                  No doctors found. Register one on the left.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {overview?.doctors.map((doc) => (
-                    <div
-                      key={doc.doctorId}
-                      className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between hover:border-slate-300 transition"
-                    >
-                      <div>
-                        <h4 className="font-bold text-slate-900">{doc.doctorName}</h4>
-                        <p className="text-xs text-slate-500 font-medium">{doc.specialty}</p>
-                      </div>
-
-                      <button
-                        onClick={() => openScheduleManager(doc.doctorId, doc.doctorName)}
-                        className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 flex items-center space-x-1.5 transition"
-                      >
-                        <CalendarDays className="w-3.5 h-3.5" />
-                        <span>Manage Weekly Shifts</span>
-                      </button>
+          {/* PESTAÑA 2: MÉDICOS Y HORARIOS */}
+          <TabsContent value="doctors" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Formulario Registrar Médico */}
+              <Card className="shadow-xs border-slate-200 h-fit">
+                <CardHeader>
+                  <div className="flex items-center space-x-2">
+                    <UserPlus className="w-5 h-5 text-primary" />
+                    <CardTitle className="text-base">Registrar Nuevo Médico</CardTitle>
+                  </div>
+                  <CardDescription className="text-xs">
+                    Ingresá los datos del profesional para incorporarlo al consultorio.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleRegisterDoctor} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="doc-name" className="text-xs font-semibold">
+                        Nombre Completo del Médico *
+                      </Label>
+                      <Input
+                        id="doc-name"
+                        type="text"
+                        required
+                        placeholder="Ej. Dr. Carlos Gómez"
+                        value={newDocName}
+                        onChange={(e) => setNewDocName(e.target.value)}
+                        className="rounded-xl"
+                      />
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* TAB 3: EXPORT REPORTS */}
-        {activeTab === 'reports' && (
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Export Clinic Reports</h3>
-                <p className="text-xs text-slate-500">
-                  Generate professional spreadsheet (.xlsx) and printable PDF summaries of doctor shifts and attended patient counts.
-                </p>
-              </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="doc-spec" className="text-xs font-semibold">
+                        Especialidad / Área
+                      </Label>
+                      <Input
+                        id="doc-spec"
+                        type="text"
+                        placeholder="Ej. Pediatría, Traumatología"
+                        value={newDocSpecialty}
+                        onChange={(e) => setNewDocSpecialty(e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
 
-              {/* Date Range Selection */}
-              <div className="flex flex-wrap items-center gap-3 pt-2">
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-semibold text-slate-600">From:</span>
-                  <input
-                    type="date"
-                    value={reportStartDate}
-                    onChange={(e) => setReportStartDate(e.target.value)}
-                    className="px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-xl bg-slate-50 text-slate-800"
-                  />
-                </div>
+                    <Button
+                      type="submit"
+                      disabled={isSubmittingDoctor}
+                      className="w-full rounded-xl"
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      {isSubmittingDoctor ? 'Guardando...' : 'Registrar Médico'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
 
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-semibold text-slate-600">To:</span>
-                  <input
-                    type="date"
-                    value={reportEndDate}
-                    onChange={(e) => setReportEndDate(e.target.value)}
-                    className="px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-xl bg-slate-50 text-slate-800"
-                  />
-                </div>
+              {/* Lista de Médicos */}
+              <div className="lg:col-span-2 space-y-4">
+                <h3 className="font-bold text-slate-900 text-base">
+                  Personal Médico del Consultorio
+                </h3>
 
-                <div className="flex items-center space-x-1.5">
-                  <button
-                    onClick={setRangeToday}
-                    className="px-2.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
-                  >
-                    Today
-                  </button>
-                  <button
-                    onClick={setRangeLast7Days}
-                    className="px-2.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
-                  >
-                    Last 7 Days
-                  </button>
-                  <button
-                    onClick={setRangeThisMonth}
-                    className="px-2.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
-                  >
-                    This Month
-                  </button>
-                </div>
-              </div>
+                {overview?.doctors.length === 0 ? (
+                  <Card className="p-8 text-center text-slate-400 border-dashed">
+                    No hay médicos registrados. Agregá uno usando el formulario.
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {overview?.doctors.map((doc) => (
+                      <Card
+                        key={doc.doctorId}
+                        className="shadow-xs border-slate-200 hover:border-slate-300 transition"
+                      >
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <div>
+                            <h4 className="font-bold text-slate-900 text-sm">
+                              {doc.doctorName}
+                            </h4>
+                            <p className="text-xs text-slate-500 font-medium">
+                              {doc.specialty}
+                            </p>
+                          </div>
 
-              {/* Action Buttons */}
-              <div className="pt-4 flex flex-wrap gap-4">
-                <a
-                  href={`/api/reports/excel?startDate=${reportStartDate}&endDate=${reportEndDate}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-xs flex items-center space-x-2 transition"
-                >
-                  <FileSpreadsheet className="w-4 h-4" />
-                  <span>Download Excel (.xlsx)</span>
-                </a>
-
-                <a
-                  href={`/api/reports/pdf?startDate=${reportStartDate}&endDate=${reportEndDate}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-xs flex items-center space-x-2 transition"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Download PDF (.pdf)</span>
-                </a>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openScheduleManager(doc.doctorId, doc.doctorName)}
+                            className="rounded-xl text-xs"
+                          >
+                            <CalendarDays className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                            Configurar Turnos Semanales
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        )}
+          </TabsContent>
+
+          {/* PESTAÑA 3: REPORTES */}
+          <TabsContent value="reports" className="mt-6">
+            <Card className="shadow-xs border-slate-200">
+              <CardHeader>
+                <CardTitle className="text-base">Exportar Reportes del Consultorio</CardTitle>
+                <CardDescription className="text-xs">
+                  Generá planillas estructuradas de Excel (.xlsx) y reportes médicos impresos (.pdf) con los turnos y conteo de pacientes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Rango de Fechas */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center space-x-2">
+                    <Label className="text-xs font-semibold text-slate-600">Desde:</Label>
+                    <Input
+                      type="date"
+                      value={reportStartDate}
+                      onChange={(e) => setReportStartDate(e.target.value)}
+                      className="w-auto h-9 text-xs font-medium rounded-xl"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Label className="text-xs font-semibold text-slate-600">Hasta:</Label>
+                    <Input
+                      type="date"
+                      value={reportEndDate}
+                      onChange={(e) => setReportEndDate(e.target.value)}
+                      className="w-auto h-9 text-xs font-medium rounded-xl"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-1.5">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={setRangeToday}
+                      className="text-xs h-8"
+                    >
+                      Hoy
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={setRangeLast7Days}
+                      className="text-xs h-8"
+                    >
+                      Últimos 7 Días
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={setRangeThisMonth}
+                      className="text-xs h-8"
+                    >
+                      Este Mes
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Botones de Descarga */}
+                <div className="pt-2 flex flex-wrap gap-4">
+                  <a
+                    href={`/api/reports/excel?startDate=${reportStartDate}&endDate=${reportEndDate}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs">
+                      <FileSpreadsheet className="w-4 h-4 mr-2" />
+                      Descargar Excel (.xlsx)
+                    </Button>
+                  </a>
+
+                  <a
+                    href={`/api/reports/pdf?startDate=${reportStartDate}&endDate=${reportEndDate}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="rounded-xl shadow-xs">
+                      <FileText className="w-4 h-4 mr-2" />
+                      Descargar PDF (.pdf)
+                    </Button>
+                  </a>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
 
-      {/* SCHEDULE MANAGEMENT MODAL */}
-      {managingDoctor && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">
-                  Weekly Shifts: {managingDoctor.name}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Configure recurring working days and time intervals.
+      {/* DIÁLOGO SHADCN: GESTIÓN DE HORARIOS SEMANALES */}
+      <Dialog
+        open={Boolean(managingDoctor)}
+        onOpenChange={(open) => {
+          if (!open) setManagingDoctor(null);
+        }}
+      >
+        <DialogContent className="max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              Turnos Semanales: {managingDoctor?.name}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Configurá los días y rangos horarios recurrentes en los que pasa consulta.
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingSchedules ? (
+            <div className="py-8 text-center text-xs text-slate-400">
+              Cargando horarios configurados...
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {doctorSchedules.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-4">
+                  Sin turnos configurados aún. Presioná "Agregar Turno" abajo.
                 </p>
-              </div>
-              <button
-                onClick={() => setManagingDoctor(null)}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            {loadingSchedules ? (
-              <div className="py-8 text-center text-xs text-slate-400">
-                Loading existing schedules...
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                {doctorSchedules.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-4">
-                    No shifts configured yet. Click "Add Shift" below.
-                  </p>
-                ) : (
-                  doctorSchedules.map((slot, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center space-x-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs"
+              ) : (
+                doctorSchedules.map((slot, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center space-x-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs"
+                  >
+                    {/* Día de la semana */}
+                    <select
+                      value={slot.dayOfWeek}
+                      onChange={(e) =>
+                        updateScheduleSlot(idx, 'dayOfWeek', parseInt(e.target.value))
+                      }
+                      className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-700 outline-none text-xs"
                     >
-                      {/* Day of Week */}
-                      <select
-                        value={slot.dayOfWeek}
-                        onChange={(e) =>
-                          updateScheduleSlot(idx, 'dayOfWeek', parseInt(e.target.value))
-                        }
-                        className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 font-medium text-slate-700 outline-none"
-                      >
-                        {DAY_NAMES.map((name, dayIndex) => (
-                          <option key={dayIndex} value={dayIndex}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
+                      {DIAS_SEMANA.map((name, dayIndex) => (
+                        <option key={dayIndex} value={dayIndex}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
 
-                      {/* Start Time */}
-                      <input
-                        type="time"
-                        value={slot.startTime}
-                        onChange={(e) => updateScheduleSlot(idx, 'startTime', e.target.value)}
-                        className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-slate-700 outline-none"
-                      />
+                    {/* Hora de inicio */}
+                    <Input
+                      type="time"
+                      value={slot.startTime}
+                      onChange={(e) => updateScheduleSlot(idx, 'startTime', e.target.value)}
+                      className="h-8 w-24 bg-white text-xs font-mono"
+                    />
 
-                      <span className="text-slate-400">to</span>
+                    <span className="text-slate-400">a</span>
 
-                      {/* End Time */}
-                      <input
-                        type="time"
-                        value={slot.endTime}
-                        onChange={(e) => updateScheduleSlot(idx, 'endTime', e.target.value)}
-                        className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-slate-700 outline-none"
-                      />
+                    {/* Hora de fin */}
+                    <Input
+                      type="time"
+                      value={slot.endTime}
+                      onChange={(e) => updateScheduleSlot(idx, 'endTime', e.target.value)}
+                      className="h-8 w-24 bg-white text-xs font-mono"
+                    />
 
-                      {/* Remove Button */}
-                      <button
-                        onClick={() => removeScheduleSlot(idx)}
-                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition"
-                        title="Remove slot"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))
-                )}
+                    {/* Botón eliminar turno */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => removeScheduleSlot(idx)}
+                      className="text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                      title="Eliminar turno"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))
+              )}
 
-                <button
-                  type="button"
-                  onClick={addScheduleSlot}
-                  className="w-full py-2 border border-dashed border-slate-300 hover:border-blue-400 rounded-xl text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center justify-center space-x-1.5 transition"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Shift Slot</span>
-                </button>
-              </div>
-            )}
-
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
-              <button
+              <Button
                 type="button"
-                onClick={() => setManagingDoctor(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                variant="outline"
+                onClick={addScheduleSlot}
+                className="w-full border-dashed rounded-xl text-xs h-9"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveSchedules}
-                className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs transition flex items-center space-x-1.5"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>Save Schedules</span>
-              </button>
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Agregar Turno
+              </Button>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setManagingDoctor(null)}
+              className="rounded-xl text-xs"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={isSavingSchedules}
+              onClick={handleSaveSchedules}
+              className="rounded-xl text-xs"
+            >
+              <Save className="w-3.5 h-3.5 mr-1.5" />
+              {isSavingSchedules ? 'Guardando...' : 'Guardar Horarios'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

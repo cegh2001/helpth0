@@ -16,39 +16,39 @@ export class PdfKitReportExporter implements ReportExporterPort {
         doc.on('end', () => resolve(Buffer.concat(chunks)));
         doc.on('error', (err) => reject(err));
 
-        // Header
+        // Cabecera
         doc
           .rect(40, 40, 515, 60)
           .fill('#1E3A8A');
 
         doc
           .fillColor('#FFFFFF')
-          .fontSize(20)
+          .fontSize(18)
           .font('Helvetica-Bold')
-          .text('HELPTH0 CLINIC REPORT', 55, 52);
+          .text('REPORTE CLÍNICO HELPTH0', 55, 52);
 
         doc
           .fontSize(10)
           .font('Helvetica')
-          .text('Doctor Shifts and Patient Headcount Summary', 55, 76);
+          .text('Resumen de Turnos Médicos y Conteo Diario de Pacientes', 55, 76);
 
-        // Metadata box
+        // Caja de Metadatos
         doc
           .fillColor('#1E293B')
           .fontSize(10)
           .font('Helvetica-Bold')
-          .text('Report Period:', 40, 115)
+          .text('Período del Reporte:', 40, 115)
           .font('Helvetica')
-          .text(`${data.startDate}  to  ${data.endDate}`, 130, 115);
+          .text(`${data.startDate}  al  ${data.endDate}`, 155, 115);
 
         doc
           .font('Helvetica-Bold')
-          .text('Generated At:', 340, 115)
+          .text('Fecha de Emisión:', 330, 115)
           .font('Helvetica')
-          .text(data.generatedAt.toISOString().replace('T', ' ').substring(0, 19), 420, 115);
+          .text(data.generatedAt.toISOString().replace('T', ' ').substring(0, 19), 430, 115);
 
-        // KPI Summary cards
-        // Card 1: Total Patients
+        // Tarjetas de Métricas KPI
+        // Tarjeta 1: Total Pacientes
         doc
           .roundedRect(40, 135, 250, 60, 6)
           .fillAndStroke('#F1F5F9', '#CBD5E1');
@@ -57,7 +57,7 @@ export class PdfKitReportExporter implements ReportExporterPort {
           .fillColor('#64748B')
           .fontSize(9)
           .font('Helvetica-Bold')
-          .text('TOTAL PATIENTS SEEN', 55, 145);
+          .text('TOTAL PACIENTES ATENDIDOS', 55, 145);
 
         doc
           .fillColor('#0F172A')
@@ -65,7 +65,7 @@ export class PdfKitReportExporter implements ReportExporterPort {
           .font('Helvetica-Bold')
           .text(String(data.totalPatientsPeriod), 55, 162);
 
-        // Card 2: Active Doctors
+        // Tarjeta 2: Médicos Registrados
         doc
           .roundedRect(305, 135, 250, 60, 6)
           .fillAndStroke('#F1F5F9', '#CBD5E1');
@@ -74,7 +74,7 @@ export class PdfKitReportExporter implements ReportExporterPort {
           .fillColor('#64748B')
           .fontSize(9)
           .font('Helvetica-Bold')
-          .text('DOCTORS RECORDED', 320, 145);
+          .text('MÉDICOS REGISTRADOS', 320, 145);
 
         doc
           .fillColor('#0F172A')
@@ -82,17 +82,17 @@ export class PdfKitReportExporter implements ReportExporterPort {
           .font('Helvetica-Bold')
           .text(String(data.doctors.length), 320, 162);
 
-        // Doctors Table
+        // Tabla de Médicos
         let y = 215;
         doc
           .fillColor('#0F172A')
           .fontSize(12)
           .font('Helvetica-Bold')
-          .text('Doctor Summary Breakdown', 40, y);
+          .text('Resumen General por Médico', 40, y);
 
         y += 20;
 
-        // Table Header
+        // Encabezado de la tabla
         doc
           .rect(40, y, 515, 22)
           .fill('#2563EB');
@@ -101,14 +101,14 @@ export class PdfKitReportExporter implements ReportExporterPort {
           .fillColor('#FFFFFF')
           .fontSize(9)
           .font('Helvetica-Bold')
-          .text('Doctor Name', 45, y + 6)
-          .text('Specialty', 180, y + 6)
-          .text('Weekly Shift Schedule', 290, y + 6)
-          .text('Patients', 490, y + 6, { width: 60, align: 'right' });
+          .text('Nombre del Médico', 45, y + 6)
+          .text('Especialidad', 180, y + 6)
+          .text('Turnos Semanales', 290, y + 6)
+          .text('Pacientes', 490, y + 6, { width: 60, align: 'right' });
 
         y += 22;
 
-        // Table Rows
+        // Filas de la tabla
         let isAlternate = false;
         for (const docRow of data.doctors) {
           if (y > 740) {
@@ -135,7 +135,7 @@ export class PdfKitReportExporter implements ReportExporterPort {
           isAlternate = !isAlternate;
         }
 
-        // Total Line
+        // Fila Total
         doc
           .rect(40, y, 515, 24)
           .fill('#E2E8F0');
@@ -144,15 +144,15 @@ export class PdfKitReportExporter implements ReportExporterPort {
           .fillColor('#0F172A')
           .fontSize(10)
           .font('Helvetica-Bold')
-          .text('TOTAL', 45, y + 6)
+          .text('TOTAL GENERAL', 45, y + 6)
           .text(String(data.totalPatientsPeriod), 490, y + 6, { width: 60, align: 'right' });
 
-        // Footer
+        // Pie de Página
         doc
           .fontSize(8)
           .font('Helvetica')
           .fillColor('#94A3B8')
-          .text('helpth0 Clinic Management System - Confidential Report', 40, 780, {
+          .text('helpth0 — Sistema de Gestión Clínica • Reporte Confidencial', 40, 780, {
             align: 'center',
             width: 515,
           });

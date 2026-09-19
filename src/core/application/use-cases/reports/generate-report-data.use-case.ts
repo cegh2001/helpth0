@@ -3,7 +3,7 @@ import { ScheduleRepository } from '@/core/domain/repositories/schedule.reposito
 import { DailyCountRepository } from '@/core/domain/repositories/daily-count.repository';
 import { ClinicReportData, DoctorReportRow } from '@/core/application/ports/report-exporter.port';
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 export interface GenerateReportDTO {
   startDate: string; // YYYY-MM-DD
@@ -33,7 +33,7 @@ export class GenerateReportDataUseCase {
       const schedulesSummary = schedules
         .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime))
         .map((s) => `${DAY_NAMES[s.dayOfWeek]}: ${s.startTime}-${s.endTime}`)
-        .join(', ') || 'No fixed schedule';
+        .join(', ') || 'Sin turnos fijos';
 
       const docCounts = periodCounts
         .filter((c) => c.doctorId === doc.id)

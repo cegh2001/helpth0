@@ -6,6 +6,9 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.{test,spec}.ts', 'src/**/*.{test,spec}.ts'],
+    env: {
+      DATABASE_URL: 'file:./test.db',
+    },
   },
   resolve: {
     alias: {
