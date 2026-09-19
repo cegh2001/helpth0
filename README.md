@@ -26,6 +26,8 @@ Double-click `start-helpth0.bat`. On every launch it:
 
 The launcher stops and displays the decisive error if any preparation step fails. Keep its terminal window open while using the application.
 
+For desktop access, create a shortcut to `start-helpth0.bat` instead of copying the project file. A copied launcher can still locate the default installation at `%USERPROFILE%\Documents\GitHub\helpth0`; if the project is moved elsewhere, set `HELPTH0_HOME` to its full path.
+
 ## Initial Setup
 
 The first visit redirects to `/setup` while no user exists. The setup page shows the fixed authorized email and accepts a new password of 8 to 128 characters. After setup closes, authentication is available only through `/login`; public sign-up is not exposed.

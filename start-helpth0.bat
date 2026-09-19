@@ -8,7 +8,36 @@ echo               HELPTH0 CLINIC SYSTEM
 echo ========================================================
 echo.
 
-cd /d "%~dp0"
+set "APP_DIR=%~dp0"
+if exist "!APP_DIR!package.json" if exist "!APP_DIR!scripts\ensure-auth-secret.mjs" goto project_found
+
+if defined HELPTH0_HOME (
+    set "APP_DIR=!HELPTH0_HOME!"
+    if not "!APP_DIR:~-1!"=="\" set "APP_DIR=!APP_DIR!\"
+    if exist "!APP_DIR!package.json" if exist "!APP_DIR!scripts\ensure-auth-secret.mjs" goto project_found
+)
+
+set "APP_DIR=%USERPROFILE%\Documents\GitHub\helpth0\"
+if exist "!APP_DIR!package.json" if exist "!APP_DIR!scripts\ensure-auth-secret.mjs" goto project_found
+
+echo [ERROR] Could not find the helpth0 project folder.
+echo Keep this file inside the project, create a shortcut instead of copying it,
+echo or define HELPTH0_HOME with the full project path.
+pause
+exit /b 1
+
+:project_found
+cd /d "!APP_DIR!"
+if %errorlevel% neq 0 (
+    echo [ERROR] Could not open the helpth0 project folder.
+    pause
+    exit /b 1
+)
+
+if /i "%~1"=="--check" (
+    echo [OK] helpth0 project found at !CD!
+    exit /b 0
+)
 
 where node >nul 2>nul
 if %errorlevel% neq 0 (
