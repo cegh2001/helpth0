@@ -17,7 +17,12 @@ if defined HELPTH0_HOME (
     if exist "!APP_DIR!package.json" if exist "!APP_DIR!scripts\ensure-auth-secret.mjs" goto project_found
 )
 
-set "APP_DIR=%USERPROFILE%\Documents\GitHub\helpth0\"
+for /f "usebackq delims=" %%D in (`powershell.exe -NoProfile -Command "[Environment]::GetFolderPath('MyDocuments')"`) do set "DOCUMENTS_DIR=%%D"
+
+set "APP_DIR=!DOCUMENTS_DIR!\helpth0\"
+if exist "!APP_DIR!package.json" if exist "!APP_DIR!scripts\ensure-auth-secret.mjs" goto project_found
+
+set "APP_DIR=!DOCUMENTS_DIR!\GitHub\helpth0\"
 if exist "!APP_DIR!package.json" if exist "!APP_DIR!scripts\ensure-auth-secret.mjs" goto project_found
 
 echo [ERROR] Could not find the helpth0 project folder.
@@ -72,6 +77,22 @@ if !SERVER_STATUS! neq 0 (
     echo Close that application or change its port before starting helpth0.
     pause
     exit /b 1
+)
+
+node -e "const manifest=require('./package.json'); const checks=[['@prisma/client','dependencies'],['better-sqlite3','dependencies'],['prisma','devDependencies']]; for (const [name,group] of checks) { const wanted=manifest[group][name]; const installed=require('./node_modules/'+name+'/package.json').version; if (wanted!==installed) process.exit(1) }; const Database=require('better-sqlite3'); const db=new Database(':memory:'); db.close()" >nul 2>nul
+if %errorlevel% neq 0 (
+    echo [*] Installing project dependencies...
+    if "!PKG_MGR!"=="pnpm" (
+        call pnpm install --frozen-lockfile
+    ) else (
+        call npm install
+    )
+    if %errorlevel% neq 0 (
+        echo [ERROR] Dependency installation failed.
+        echo Check the internet connection and try again.
+        pause
+        exit /b 1
+    )
 )
 
 echo [*] Ensuring local authentication secret...
