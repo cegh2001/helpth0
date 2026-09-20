@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@/generated/prisma/client';
 import { WeeklySchedule } from '@/core/domain/entities/schedule.entity';
 import { PrismaScheduleRepository } from '@/infrastructure/persistence/repositories/prisma-schedule.repository';
 

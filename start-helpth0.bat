@@ -47,6 +47,13 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+node -e "const [major, minor] = process.versions.node.split('.').map(Number); process.exit(major > 20 || (major === 20 && minor >= 19) ? 0 : 1)"
+if %errorlevel% neq 0 (
+    echo [ERROR] Node.js 20.19 or newer is required.
+    pause
+    exit /b 1
+)
+
 where pnpm >nul 2>nul
 if %errorlevel% equ 0 (
     set PKG_MGR=pnpm
@@ -56,6 +63,7 @@ if %errorlevel% equ 0 (
 
 echo [*] Using package manager: !PKG_MGR!
 set "REUSED_SERVER=0"
+set "PRISMA_HIDE_UPDATE_MESSAGE=1"
 call node scripts\local-server-status.mjs status
 set SERVER_STATUS=!errorlevel!
 if !SERVER_STATUS! equ 10 goto already_running
@@ -83,7 +91,7 @@ if %errorlevel% neq 0 (
 )
 
 echo [*] Synchronizing the local database...
-call !PKG_MGR! exec prisma db push --skip-generate
+call !PKG_MGR! exec prisma db push
 if %errorlevel% neq 0 (
     echo [ERROR] Database synchronization failed.
     pause

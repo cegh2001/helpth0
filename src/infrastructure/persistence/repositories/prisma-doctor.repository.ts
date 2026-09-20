@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/generated/prisma/client';
 import { Doctor } from '@/core/domain/entities/doctor.entity';
 import { DoctorRepository } from '@/core/domain/repositories/doctor.repository';
 

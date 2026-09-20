@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@/generated/prisma/client';
 import { DailyPatientCount } from '@/core/domain/entities/daily-count.entity';
 import { PrismaDailyCountRepository } from '@/infrastructure/persistence/repositories/prisma-daily-count.repository';
 

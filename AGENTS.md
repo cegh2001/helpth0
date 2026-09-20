@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 
-`helpth0` is a local-first medical clinic management monolith built with **Next.js 16**, **TypeScript**, **SQLite (via Prisma)**, **Vitest**, **ExcelJS**, and **PDFKit**.
+`helpth0` is a local-first medical clinic management monolith built with **Next.js 16**, **TypeScript**, **SQLite (via Prisma 7)**, **Vitest**, **ExcelJS**, and **PDFKit**.
 
 The system tracks:
 - Registered doctors and their medical specialties.
@@ -99,7 +99,7 @@ start-helpth0.bat
 - Authentication is local-only and single-user. `/setup` is available only before the first user exists; public sign-up stays disabled afterward.
 - Never place a user's password in the repository, documentation, fixtures, commands, or logs.
 - `.env` is ignored. `pnpm auth:ensure-secret` appends a random `BETTER_AUTH_SECRET` only when absent and rejects short existing values.
-- Production binds to `127.0.0.1`. The Windows launcher always runs secret setup, `prisma generate`, `prisma db push`, and `pnpm build`, checking each exit code before starting.
+- Production binds to `127.0.0.1`. The Windows launcher reuses a healthy helpth0 instance; otherwise it runs setup, Prisma generation/schema sync, build, and a verified startup.
 - New migration-managed databases use `prisma migrate deploy`.
 - For an existing database created from the original pre-auth schema with `db push`, first back it up, then run `pnpm exec prisma migrate resolve --applied 20260918000000_initial`, followed by `pnpm exec prisma migrate deploy`.
 - Do not collect patient PII. Daily records contain numeric headcounts and immutable schedule-time snapshots only; the legacy `notes` column is not an application field.

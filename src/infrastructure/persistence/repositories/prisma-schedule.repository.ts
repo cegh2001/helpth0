@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/generated/prisma/client';
 import { WeeklySchedule } from '@/core/domain/entities/schedule.entity';
 import { ScheduleRepository } from '@/core/domain/repositories/schedule.repository';
 

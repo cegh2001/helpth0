@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/generated/prisma/client';
 import { DailyPatientCount } from '@/core/domain/entities/daily-count.entity';
 import { DailyCountRepository } from '@/core/domain/repositories/daily-count.repository';
 

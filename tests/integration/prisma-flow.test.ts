@@ -31,7 +31,7 @@ function removeTestDatabaseFiles(): void {
 describe('Prisma & SQLite End-to-End Flow', () => {
   beforeAll(() => {
     removeTestDatabaseFiles();
-    execSync('pnpm exec prisma db push --skip-generate', {
+    execSync('pnpm exec prisma db push', {
       env: { ...process.env, DATABASE_URL: 'file:./test.db' },
       stdio: 'ignore',
     });

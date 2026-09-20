@@ -1,6 +1,6 @@
 # helpth0 - Medical Clinic Management System
 
-`helpth0` is a local-first clinic management monolith built with **Next.js 16**, **TypeScript**, **SQLite via Prisma**, **Vitest**, **ExcelJS**, and **PDFKit** using strict Hexagonal Architecture.
+`helpth0` is a local-first clinic management monolith built with **Next.js 16**, **TypeScript**, **SQLite via Prisma 7**, **Vitest**, **ExcelJS**, and **PDFKit** using strict Hexagonal Architecture.
 
 It supports weekly doctor schedules, daily numeric patient headcounts, and Excel/PDF reports. The application is designed for one local authorized user and does not collect patient-identifying information.
 
@@ -18,13 +18,14 @@ It supports weekly doctor schedules, daily numeric patient headcounts, and Excel
 
 Double-click `start-helpth0.bat`. On every launch it:
 
-1. Creates `BETTER_AUTH_SECRET` in `.env` when the variable is absent.
-2. Generates Prisma Client.
-3. Synchronizes the SQLite schema with `prisma db push`.
-4. Builds the production application.
-5. Starts the server on `http://127.0.0.1:3000` and opens it in the default browser.
+1. Reuses an existing healthy helpth0 instance when one is already listening.
+2. Otherwise, creates `BETTER_AUTH_SECRET` in `.env` when the variable is absent.
+3. Generates Prisma Client 7.
+4. Synchronizes the SQLite schema with `prisma db push`.
+5. Builds the production application.
+6. Starts and verifies the server on `http://127.0.0.1:3000` before opening it.
 
-The launcher stops and displays the decisive error if any preparation step fails. Keep its terminal window open while using the application.
+The launcher rejects another application occupying port 3000 and stops on any preparation or startup failure. Prisma 8 release candidates are intentionally not used; the project pins the latest verified stable Prisma 7 release.
 
 For desktop access, create a shortcut to `start-helpth0.bat` instead of copying the project file. A copied launcher can still locate the default installation at `%USERPROFILE%\Documents\GitHub\helpth0`; if the project is moved elsewhere, set `HELPTH0_HOME` to its full path.
 
@@ -41,6 +42,8 @@ pnpm auth:ensure-secret
 The command appends a cryptographically random secret when `BETTER_AUTH_SECRET` is absent, leaves a valid existing value unchanged, and fails rather than replacing a value shorter than 32 characters.
 
 ## Manual Development
+
+Requires Node.js 20.19 or newer.
 
 ```bash
 pnpm install
