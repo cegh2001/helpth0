@@ -55,6 +55,17 @@ if %errorlevel% equ 0 (
 )
 
 echo [*] Using package manager: !PKG_MGR!
+set "REUSED_SERVER=0"
+call node scripts\local-server-status.mjs status
+set SERVER_STATUS=!errorlevel!
+if !SERVER_STATUS! equ 10 goto already_running
+if !SERVER_STATUS! neq 0 (
+    echo [ERROR] Port 3000 is occupied by another application.
+    echo Close that application or change its port before starting helpth0.
+    pause
+    exit /b 1
+)
+
 echo [*] Ensuring local authentication secret...
 call !PKG_MGR! run auth:ensure-secret
 if %errorlevel% neq 0 (
@@ -88,20 +99,37 @@ if %errorlevel% neq 0 (
 )
 
 echo [*] Starting local clinic server...
-start "" /b !PKG_MGR! run start
+start "" /b cmd /d /c "call !PKG_MGR! run start"
 
 echo [*] Waiting for server to initialize...
-timeout /t 3 /nobreak >nul
+call node scripts\local-server-status.mjs wait
+if %errorlevel% neq 0 (
+    echo [ERROR] helpth0 did not start correctly.
+    echo Review the server output above for the root cause.
+    pause
+    exit /b 1
+)
+goto open_browser
 
+:already_running
+set "REUSED_SERVER=1"
+echo [*] helpth0 is already running. Reusing the existing server.
+
+:open_browser
 echo [*] Opening helpth0 in your default browser...
 start http://127.0.0.1:3000
 
 echo.
 echo ========================================================
 echo  helpth0 is running at http://127.0.0.1:3000
-echo  Keep this terminal window open while using the system.
-echo  Press Ctrl+C or close this window to stop the server.
+if "!REUSED_SERVER!"=="1" (
+    echo  The existing server remains active in its original window.
+) else (
+    echo  Keep this terminal window open while using the system.
+    echo  Press Ctrl+C or close this window to stop the server.
+)
 echo ========================================================
 echo.
 
 pause
+exit /b 0
