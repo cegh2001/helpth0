@@ -69,6 +69,16 @@ export class PrismaConsultationRepository implements ConsultationRepository {
       patientId = patient.id;
     }
 
+    let doctorId: string | undefined = consultation.doctorId ?? undefined;
+    if (!doctorId && consultation.doctorName) {
+      const matchedDoctor = await this.prisma.doctor.findFirst({
+        where: { name: { equals: consultation.doctorName.trim(), mode: 'insensitive' } },
+      });
+      if (matchedDoctor) {
+        doctorId = matchedDoctor.id;
+      }
+    }
+
     const raw = await this.prisma.consultation.upsert({
       where: { importHash: consultation.importHash },
       create: {
@@ -79,6 +89,7 @@ export class PrismaConsultationRepository implements ConsultationRepository {
         patientCedula: consultation.patientCedula,
         patientPhone: consultation.patientPhone,
         patientAddress: consultation.patientAddress,
+        doctorId,
         doctorName: consultation.doctorName,
         specialty: consultation.specialty,
         amountPointBs: consultation.amountPointBs,
@@ -96,6 +107,7 @@ export class PrismaConsultationRepository implements ConsultationRepository {
         updatedAt: consultation.updatedAt,
       },
       update: {
+        doctorId,
         patientPhone: consultation.patientPhone,
         patientAddress: consultation.patientAddress,
         amountPointBs: consultation.amountPointBs,
@@ -172,6 +184,7 @@ export class PrismaConsultationRepository implements ConsultationRepository {
     patientCedula: string | null;
     patientPhone: string | null;
     patientAddress: string | null;
+    doctorId?: string | null;
     doctorName: string;
     specialty: string;
     amountPointBs: number;
@@ -196,6 +209,7 @@ export class PrismaConsultationRepository implements ConsultationRepository {
       patientCedula: raw.patientCedula,
       patientPhone: raw.patientPhone,
       patientAddress: raw.patientAddress,
+      doctorId: raw.doctorId ?? null,
       doctorName: raw.doctorName,
       specialty: raw.specialty,
       amountPointBs: raw.amountPointBs,

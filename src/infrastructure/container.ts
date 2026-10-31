@@ -67,7 +67,8 @@ export const generateReportDataUseCase = new GenerateReportDataUseCase(
 export const checkSetupStatusUseCase = new CheckSetupStatusUseCase(adminAccountRepository);
 export const importConsultationsUseCase = new ImportConsultationsUseCase(
   consultationRepository,
-  consultationParser
+  consultationParser,
+  doctorRepository
 );
 export const getConsultationsUseCase = new GetConsultationsUseCase(consultationRepository);
 export const exportConsultationsUseCase = new ExportConsultationsUseCase(

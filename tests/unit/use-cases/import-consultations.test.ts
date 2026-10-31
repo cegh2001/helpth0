@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { InMemoryConsultationRepository } from '../../mocks/in-memory-consultation.repository';
+import { InMemoryDoctorRepository } from '../../mocks/in-memory-doctor.repository';
 import { ImportConsultationsUseCase } from '@/core/application/use-cases/consultations/import-consultations.use-case';
 import { ConsultationCsvParser } from '@/infrastructure/parsers/consultation-excel.parser';
 
@@ -31,5 +32,26 @@ describe('ImportConsultationsUseCase', () => {
     // Verify stored items
     const all = await repository.findMany();
     expect(all.length).toBe(3);
+  });
+
+  it('automatically creates doctors in doctorRepository and links consultations when doctorRepository is provided', async () => {
+    const repository = new InMemoryConsultationRepository();
+    const doctorRepo = new InMemoryDoctorRepository();
+    const parser = new ConsultationCsvParser();
+    const useCase = new ImportConsultationsUseCase(repository, parser, doctorRepo);
+
+    const result = await useCase.execute({ csvContent: SAMPLE_CSV });
+    expect(result.inserted).toBe(3);
+
+    const doctors = await doctorRepo.findAll();
+    expect(doctors.length).toBe(1);
+    expect(doctors[0].name).toBe('DRA MAILET CONTRERA');
+    expect(doctors[0].specialty).toBe('TRAUMATOLOGIA');
+    expect(doctors[0].isActive).toBe(true);
+
+    const consultations = await repository.findMany();
+    expect(consultations[0].doctorId).toBe(doctors[0].id);
+    expect(consultations[1].doctorId).toBe(doctors[0].id);
+    expect(consultations[2].doctorId).toBe(doctors[0].id);
   });
 });

@@ -9,6 +9,7 @@ export interface ConsultationProps {
   patientCedula?: string | null;
   patientPhone?: string | null;
   patientAddress?: string | null;
+  doctorId?: string | null;
   doctorName: string;
   specialty: string;
   amountPointBs?: number;
@@ -47,6 +48,7 @@ export class Consultation {
   readonly patientCedula: string | null;
   readonly patientPhone: string | null;
   readonly patientAddress: string | null;
+  readonly doctorId: string | null;
   readonly doctorName: string;
   readonly specialty: string;
   readonly amountPointBs: number;
@@ -88,6 +90,7 @@ export class Consultation {
     this.patientCedula = props.patientCedula?.trim() || null;
     this.patientPhone = props.patientPhone?.trim() || null;
     this.patientAddress = props.patientAddress?.trim() || null;
+    this.doctorId = props.doctorId ?? null;
     this.doctorName = doctor;
     this.specialty = spec;
 

@@ -12,6 +12,15 @@ export class InMemoryDoctorRepository implements DoctorRepository {
     return this.doctors.get(id) || null;
   }
 
+  async findByName(name: string): Promise<Doctor | null> {
+    const norm = name.trim().toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ');
+    for (const doc of this.doctors.values()) {
+      const docNorm = doc.name.trim().toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ');
+      if (docNorm === norm) return doc;
+    }
+    return null;
+  }
+
   async findAll(): Promise<Doctor[]> {
     return Array.from(this.doctors.values());
   }

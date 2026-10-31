@@ -9,14 +9,15 @@ generator client {
 }
 
 model Doctor {
-  id          String       @id @default(cuid())
-  name        String
-  specialty   String       @default("General")
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  schedules   Schedule[]
-  dailyCounts DailyCount[]
+  id            String         @id @default(cuid())
+  name          String
+  specialty     String         @default("General")
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  schedules     Schedule[]
+  dailyCounts   DailyCount[]
+  consultations Consultation[]
 }
 
 model Schedule {
@@ -142,6 +143,8 @@ model Consultation {
   patientPhone   String?
   patientAddress String?
 
+  doctorId       String?
+  doctor         Doctor?  @relation(fields: [doctorId], references: [id], onDelete: SetNull)
   doctorName     String
   specialty      String
 
@@ -162,6 +165,7 @@ model Consultation {
   updatedAt      DateTime @updatedAt
 
   @@index([date])
+  @@index([doctorId])
   @@index([doctorName])
   @@index([specialty])
   @@index([status])

@@ -149,21 +149,31 @@ export function ConsultationsModule() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (filters?: { startDate?: string; endDate?: string; period?: string }) => {
     setIsExporting(true);
     try {
-      const res = await fetch('/api/consultations/export');
+      const params = new URLSearchParams();
+      if (filters?.startDate) params.set('startDate', filters.startDate);
+      if (filters?.endDate) params.set('endDate', filters.endDate);
+      if (filters?.period) params.set('period', filters.period);
+
+      const qs = params.toString();
+      const res = await fetch(`/api/consultations/export${qs ? `?${qs}` : ''}`);
       if (!res.ok) throw new Error('Error al generar Excel');
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Consultas_y_Pagos_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const slug = (filters?.period || 'consultas')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+      a.download = `Consultas_${slug}_${new Date().toISOString().slice(0, 10)}.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      showFeedback('success', 'Planilla Excel generada exitosamente');
+      showFeedback('success', `Planilla Excel generada: ${filters?.period || 'Completo'}`);
     } catch (err) {
       showFeedback('error', err instanceof Error ? err.message : 'Error al exportar planilla');
     } finally {

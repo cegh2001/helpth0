@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import React, { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Download, Search, RefreshCw, TrendingUp, HeartHandshake } from 'lucide-react';
+import { TrendingUp, HeartHandshake } from 'lucide-react';
+import {
+  ConsultationsFilterBar,
+  FilterState,
+} from './consultations-filter-bar';
 
 export interface ConsultationItem {
   id: string;
@@ -31,7 +33,7 @@ interface Props {
   consultations: ConsultationItem[];
   isLoading: boolean;
   onRefresh: () => void;
-  onExport: () => void;
+  onExport: (filters: { startDate?: string; endDate?: string; period?: string }) => void;
   isExporting: boolean;
 }
 
@@ -100,18 +102,53 @@ export function ConsultationsTable({
   onExport,
   isExporting,
 }: Props) {
-  const [search, setSearch] = useState('');
+  const availableMonths = useMemo(() => {
+    const monthSet = new Set<string>();
+    consultations.forEach((c) => {
+      if (c.date && c.date.length >= 7) {
+        monthSet.add(c.date.slice(0, 7));
+      }
+    });
+    const months = Array.from(monthSet).sort().reverse();
+    if (months.length === 0) months.push('2026-10');
 
-  const filtered = consultations.filter((c) => {
-    const q = search.toLowerCase();
-    return (
-      c.patientName.toLowerCase().includes(q) ||
-      (c.patientCedula && c.patientCedula.includes(q)) ||
-      c.doctorName.toLowerCase().includes(q) ||
-      c.specialty.toLowerCase().includes(q) ||
-      c.date.includes(q)
-    );
-  });
+    const MONTH_NAMES = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    ];
+
+    return months.map((m) => {
+      const [year, mon] = m.split('-').map(Number);
+      const name = MONTH_NAMES[mon - 1] || m;
+      return { value: m, label: `${name} ${year}` };
+    });
+  }, [consultations]);
+
+  const [filter, setFilter] = useState<FilterState>(() => ({
+    search: '',
+    mode: 'all',
+    selectedMonth: '2026-10',
+    startDate: '',
+    endDate: '',
+    periodLabel: 'Todo el Histórico',
+  }));
+
+  const filtered = useMemo(() => {
+    return consultations.filter((c) => {
+      if (filter.startDate && c.date < filter.startDate) return false;
+      if (filter.endDate && c.date > filter.endDate) return false;
+
+      if (!filter.search.trim()) return true;
+      const q = filter.search.toLowerCase().trim();
+      return (
+        c.patientName.toLowerCase().includes(q) ||
+        (c.patientCedula && c.patientCedula.includes(q)) ||
+        c.doctorName.toLowerCase().includes(q) ||
+        c.specialty.toLowerCase().includes(q) ||
+        c.date.includes(q)
+      );
+    });
+  }, [consultations, filter]);
 
   const totalUsd = filtered.reduce((s, c) => s + c.amountUsd, 0);
   const totalBs = filtered.reduce((s, c) => s + c.totalBs, 0);
@@ -131,45 +168,29 @@ export function ConsultationsTable({
         ? `Bs ${avgRate.toFixed(2)}`
         : '-';
 
+  const handleExportClick = () => {
+    onExport({
+      startDate: filter.startDate || undefined,
+      endDate: filter.endDate || undefined,
+      period: filter.periodLabel,
+    });
+  };
+
   return (
     <div className="space-y-4">
-      {/* Barra de Herramientas y Filtros */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por paciente, cédula o médico..."
-            className="pl-9 text-xs"
-          />
-        </div>
+      {/* Barra de Filtros Inteligente: Mes, Semanas y Búsqueda */}
+      <ConsultationsFilterBar
+        filter={filter}
+        onChange={setFilter}
+        availableMonths={availableMonths}
+        onRefresh={onRefresh}
+        onExport={handleExportClick}
+        isLoading={isLoading}
+        isExporting={isExporting}
+        totalFiltered={filtered.length}
+      />
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRefresh}
-            disabled={isLoading}
-            className="text-xs flex items-center gap-1.5"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Actualizar</span>
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={onExport}
-            disabled={isExporting || consultations.length === 0}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs flex items-center gap-1.5"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>{isExporting ? 'Generando...' : 'Descargar Excel con Resumen'}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Métricas Resumidas */}
+      {/* Métricas Resumidas Reactivas al Filtro */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs">
           <span className="text-slate-500">Total Consultas</span>
@@ -206,7 +227,7 @@ export function ConsultationsTable({
         </div>
       </div>
 
-      {/* Tabla Principal con Scroll Horizontal Amplio */}
+      {/* Tabla Principal con Scroll Horizontal */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto max-h-[600px] w-full">
           <table className="min-w-[1350px] w-full text-left text-xs border-collapse">
@@ -230,7 +251,7 @@ export function ConsultationsTable({
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={12} className="p-8 text-center text-slate-400">
-                    {isLoading ? 'Cargando datos...' : 'No se encontraron consultas registradas.'}
+                    {isLoading ? 'Cargando datos...' : 'No se encontraron consultas para el filtro seleccionado.'}
                   </td>
                 </tr>
               ) : (

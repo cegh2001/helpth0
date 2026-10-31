@@ -42,6 +42,31 @@ export class PrismaDoctorRepository implements DoctorRepository {
     });
   }
 
+  async findByName(name: string): Promise<Doctor | null> {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+
+    const raw = await this.prisma.doctor.findFirst({
+      where: {
+        name: {
+          equals: trimmed,
+          mode: 'insensitive',
+        },
+      },
+    });
+
+    if (!raw) return null;
+
+    return Doctor.create({
+      id: raw.id,
+      name: raw.name,
+      specialty: raw.specialty,
+      isActive: raw.isActive,
+      createdAt: raw.createdAt,
+      updatedAt: raw.updatedAt,
+    });
+  }
+
   async findAll(): Promise<Doctor[]> {
     const records = await this.prisma.doctor.findMany({
       orderBy: { name: 'asc' },

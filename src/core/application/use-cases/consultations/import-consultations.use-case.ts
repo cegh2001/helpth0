@@ -1,4 +1,6 @@
 import { ConsultationRepository } from '@/core/domain/repositories/consultation.repository';
+import { DoctorRepository } from '@/core/domain/repositories/doctor.repository';
+import { Doctor } from '@/core/domain/entities/doctor.entity';
 import { Consultation, ConsultationProps } from '@/core/domain/entities/consultation.entity';
 import {
   ConsultationParserPort,
@@ -22,12 +24,55 @@ export interface ImportConsultationsOutput {
 export class ImportConsultationsUseCase {
   constructor(
     private readonly consultationRepository: ConsultationRepository,
-    private readonly parser: ConsultationParserPort
+    private readonly parser: ConsultationParserPort,
+    private readonly doctorRepository?: DoctorRepository
   ) {}
+
+  private async syncDoctors(
+    consultations: Array<{ doctorName: string; specialty: string }>
+  ): Promise<Map<string, string>> {
+    const doctorIdMap = new Map<string, string>();
+    if (!this.doctorRepository) return doctorIdMap;
+
+    const uniqueMap = new Map<string, string>();
+    for (const c of consultations) {
+      const name = c.doctorName?.trim();
+      if (!name) continue;
+      const spec = c.specialty?.trim() || 'General';
+      if (!uniqueMap.has(name) || (spec !== 'General' && uniqueMap.get(name) === 'General')) {
+        uniqueMap.set(name, spec);
+      }
+    }
+
+    for (const [name, specialty] of uniqueMap.entries()) {
+      let doc = await this.doctorRepository.findByName(name);
+      if (!doc) {
+        doc = Doctor.create({
+          name,
+          specialty,
+          isActive: true,
+        });
+        await this.doctorRepository.save(doc);
+      } else if (specialty && specialty !== 'General' && doc.specialty === 'General') {
+        doc.updateDetails(doc.name, specialty);
+        await this.doctorRepository.save(doc);
+      }
+      doctorIdMap.set(name.toLowerCase(), doc.id);
+    }
+
+    return doctorIdMap;
+  }
 
   async execute(input: ImportConsultationsInput): Promise<ImportConsultationsOutput> {
     if (input.consultations && input.consultations.length > 0) {
-      const entities = input.consultations.map((c) => Consultation.create(c));
+      const doctorIdMap = await this.syncDoctors(input.consultations);
+
+      const entities = input.consultations.map((c) =>
+        Consultation.create({
+          ...c,
+          doctorId: c.doctorId || doctorIdMap.get(c.doctorName.toLowerCase()),
+        })
+      );
       const saveResult = await this.consultationRepository.saveMany(entities);
       return {
         totalInFile: entities.length,
@@ -64,10 +109,18 @@ export class ImportConsultationsUseCase {
       };
     }
 
-    const saveResult = await this.consultationRepository.saveMany(parseResult.consultations);
+    const doctorIdMap = await this.syncDoctors(parseResult.consultations);
+    const enrichedConsultations = parseResult.consultations.map((c) =>
+      Consultation.create({
+        ...c,
+        doctorId: c.doctorId || doctorIdMap.get(c.doctorName.toLowerCase()),
+      })
+    );
+
+    const saveResult = await this.consultationRepository.saveMany(enrichedConsultations);
 
     return {
-      totalInFile: parseResult.consultations.length,
+      totalInFile: enrichedConsultations.length,
       inserted: saveResult.inserted,
       skippedDuplicates: saveResult.skipped,
       errors: parseResult.errors,
