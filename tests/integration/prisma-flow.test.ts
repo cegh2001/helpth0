@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execSync } from 'node:child_process';
-import fs from 'node:fs';
-import path from 'node:path';
 import {
   registerDoctorUseCase,
   setDoctorSchedulesUseCase,
@@ -13,33 +11,37 @@ import {
 } from '@/infrastructure/container';
 import { prisma } from '@/infrastructure/persistence/prisma/prisma.client';
 
-const TEST_DATABASE_FILES = [
-  'test.db',
-  'test.db-journal',
-  'test.db-shm',
-  'test.db-wal',
-].map((fileName) => path.resolve(process.cwd(), 'prisma', fileName));
+const testDbUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+const isPostgresConfigured = Boolean(
+  testDbUrl &&
+    (testDbUrl.startsWith('postgresql://') || testDbUrl.startsWith('postgres://'))
+);
 
-function removeTestDatabaseFiles(): void {
-  for (const filePath of TEST_DATABASE_FILES) {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-  }
-}
+const describePostgresE2E = isPostgresConfigured ? describe : describe.skip;
 
-describe('Prisma & SQLite End-to-End Flow', () => {
-  beforeAll(() => {
-    removeTestDatabaseFiles();
-    execSync('pnpm exec prisma db push', {
-      env: { ...process.env, DATABASE_URL: 'file:./test.db' },
+describePostgresE2E('Prisma & PostgreSQL End-to-End Flow', () => {
+  beforeAll(async () => {
+    execSync('pnpm exec prisma db push --skip-generate', {
+      env: { ...process.env, DATABASE_URL: testDbUrl },
       stdio: 'ignore',
     });
   }, 30_000);
 
   afterAll(async () => {
+    try {
+      await prisma.dailyCount.deleteMany({
+        where: { doctor: { name: 'Dr. Gregory House E2E' } },
+      });
+      await prisma.schedule.deleteMany({
+        where: { doctor: { name: 'Dr. Gregory House E2E' } },
+      });
+      await prisma.doctor.deleteMany({
+        where: { name: 'Dr. Gregory House E2E' },
+      });
+    } catch {
+      // Ignored if tables don't exist yet
+    }
     await prisma.$disconnect();
-    removeTestDatabaseFiles();
   });
 
   it('should register a doctor, set weekly schedule, record headcount and export files', async () => {

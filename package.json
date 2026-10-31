@@ -8,16 +8,20 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start --hostname 127.0.0.1",
+    "vercel-build": "prisma db push --skip-generate && next build",
+    "start": "next start",
     "postinstall": "prisma generate",
     "auth:ensure-secret": "node scripts/ensure-auth-secret.mjs",
+    "db:migrate-from-sqlite": "node scripts/migrate-sqlite-to-postgres.mjs",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
     "verify": "pnpm lint && pnpm test"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "@prisma/adapter-better-sqlite3": "7.10.0",
+    "@prisma/adapter-neon": "^7.10.1",
     "@prisma/client": "7.10.0",
     "better-auth": "1.6.23",
     "better-sqlite3": "12.11.1",

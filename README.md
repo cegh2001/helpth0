@@ -1,45 +1,29 @@
 # helpth0 - Medical Clinic Management System
 
-`helpth0` is a local-first clinic management monolith built with **Next.js 16**, **TypeScript**, **SQLite via Prisma 7**, **Vitest**, **ExcelJS**, and **PDFKit** using strict Hexagonal Architecture.
+`helpth0` is a clinic management application built with **Next.js 16**, **TypeScript**, **Prisma 7** connected to **Neon (PostgreSQL)**, **Vitest**, **ExcelJS**, and **PDFKit** using strict Hexagonal Architecture, deployed on **Vercel**.
 
-It supports weekly doctor schedules, daily numeric patient headcounts, and Excel/PDF reports. The application is designed for one local authorized user and does not collect patient-identifying information.
+It supports weekly doctor schedules, daily numeric patient headcounts, and Excel/PDF reports. The application is designed for clinic administration and does not collect patient-identifying information.
 
 ## Features
 
 - Daily patient headcounts by doctor and shift.
 - Recurring weekly schedules with overlap validation and stable schedule identities.
 - Historical shift snapshots in reports when schedules later change or are removed.
-- Single-user local authentication with a closed initial setup flow.
-- Local SQLite persistence with no cloud dependency.
+- Single administrator authentication with closed initial bootstrap flow.
+- Serverless PostgreSQL persistence powered by Neon.
 - Excel and PDF report generation.
-- One-click Windows launcher.
+- Production-ready cloud deployment on Vercel.
 
-## Windows Launcher
+## Deployment on Vercel
 
-Double-click `start-helpth0.bat`. On every launch it:
-
-1. Reuses an existing healthy helpth0 instance when one is already listening.
-2. Otherwise, installs dependencies when they are missing or incompatible with the PC.
-3. Creates `BETTER_AUTH_SECRET` in `.env` when the variable is absent.
-4. Generates Prisma Client 7.
-5. Synchronizes the SQLite schema with `prisma db push`.
-6. Builds the production application.
-7. Starts and verifies the server on `http://127.0.0.1:3000` before opening it.
-
-The launcher rejects another application occupying port 3000 and stops on any preparation or startup failure. Prisma 8 release candidates are intentionally not used; the project pins the latest verified stable Prisma 7 release.
-
-For desktop access, a shortcut is preferred, but a copied launcher is also supported. It searches the real Windows Documents folder for either `helpth0` or `GitHub\helpth0`. If the project is elsewhere, set `HELPTH0_HOME` to its full path.
-
-## Moving To Another PC
-
-1. Close helpth0 on the original PC.
-2. Copy the complete project folder to `Documents\helpth0` on the new PC. Include `prisma\dev.db` to preserve the existing account and clinic data.
-3. Do not copy `.env`; the launcher generates a new machine-local auth secret. Existing browser sessions are intentionally invalidated, but the same account password continues to work.
-4. Omit `node_modules` and `.next` to avoid carrying native binaries or stale builds from the old PC. The launcher installs dependencies and rebuilds the application.
-5. Install Node.js 20.19 or newer on the new PC. pnpm is preferred; npm is used as a fallback.
-6. Copy `start-helpth0.bat` to the desktop or create a shortcut to it, then double-click it while connected to the internet for the first dependency installation.
-
-If only the Git repository is copied, `.env` and `prisma\dev.db` are intentionally absent: the new PC starts with a fresh database and initial account setup.
+1. Push your repository to GitHub.
+2. Import the project into Vercel.
+3. Configure the following environment variables in the Vercel project settings:
+   - `DATABASE_URL`: Your Neon pooled connection string (`postgresql://...sslmode=require`).
+   - `BETTER_AUTH_SECRET`: Secret of at least 32 characters (generate with `openssl rand -base64 32`).
+   - `BETTER_AUTH_URL`: Canonical production URL (e.g., `https://helpth0.vercel.app`).
+   - `ADMIN_EMAIL`: Email address authorized for the initial administrator setup.
+4. Deploy. Vercel automatically runs `prisma generate` and builds the Next.js application.
 
 ## Initial Setup
 

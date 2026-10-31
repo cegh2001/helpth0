@@ -3,7 +3,7 @@
 Everything below is enforced by `pnpm lint` or `pnpm test`. A rule that is not in the linter is NOT a law: when you find a gap, add the rule instead of a reminder.
 
 ## 1. Stack & Layers (strict hexagonal monolith)
-- Stack: Next.js 16 App Router, TypeScript, SQLite + Prisma 7, Vitest, ExcelJS, PDFKit, Better Auth (single local user).
+- Stack: Next.js 16 App Router, TypeScript, PostgreSQL (Neon) + Prisma 7, Vitest, ExcelJS, PDFKit, Better Auth (single administrator).
 - `src/core/domain/` — entities, value objects, invariants. ZERO dependencies: no `next`, `react`, `@prisma/*`, `@/generated/*`, `@/infrastructure/*`, `@/app/*`, `@/lib/*`.
 - `src/core/application/` — use cases and ports. Depends only on domain.
 - `src/infrastructure/` — Prisma repositories, exporters, DI container (`container.ts`).
@@ -18,7 +18,7 @@ Everything below is enforced by `pnpm lint` or `pnpm test`. A rule that is not i
 
 ## 3. Testing
 - Unit (`tests/unit/`): pure in-memory, injecting `tests/mocks/`. Zero SQLite, Prisma, network or filesystem.
-- Integration (`tests/integration/`): the only place allowed to touch SQLite or real Excel/PDF buffers.
+- Integration (`tests/integration/`): the only place allowed to touch real databases or real Excel/PDF buffers.
 - `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `toBeInstanceOf` and argument-less `toHaveBeenCalled()` are lint errors in `tests/unit`.
 - Before finishing, apply `.agents/skills/strict-testing` plus the mutation check: delete or invert the production invariant — if the test still passes, the test is worthless.
 
@@ -27,7 +27,7 @@ Everything below is enforced by `pnpm lint` or `pnpm test`. A rule that is not i
 - Legacy `DailyCount.notes` is suppressed: never in domain, API, UI or exporters.
 
 ## 5. Security
-- Production binds `127.0.0.1`; `.env` stays ignored; secrets come from `pnpm auth:ensure-secret`. Never log or commit credentials.
+- Production runs on Vercel with HTTPS; `.env` stays ignored; secrets come from environment variables. Never log or commit credentials.
 
 ## 6. Commands
 ```bash

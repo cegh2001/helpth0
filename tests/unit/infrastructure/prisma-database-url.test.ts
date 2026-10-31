@@ -14,4 +14,9 @@ describe('Prisma database URL', () => {
     expect(getPrismaDatabaseUrl('file:./prisma/dev.db')).toBe('file:./prisma/dev.db');
     expect(getPrismaDatabaseUrl('file:C:/data/helpth0.db')).toBe('file:C:/data/helpth0.db');
   });
+
+  it('preserves postgresql connection strings without modification', () => {
+    const pgUrl = 'postgresql://user:password@ep-cool-fog-123456.us-east-2.aws.neon.tech/neondb?sslmode=require';
+    expect(getPrismaDatabaseUrl(pgUrl)).toBe(pgUrl);
+  });
 });

@@ -4,24 +4,37 @@ import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { prisma } from '@/infrastructure/persistence/prisma/prisma.client';
 import {
   ALLOWED_USER_EMAIL,
+  getTrustedOrigins,
   isAllowedUserEmail,
-  TRUSTED_AUTH_ORIGINS,
 } from '@/lib/auth-policy';
 
 function getAuthSecret(): string {
-  const secret = process.env.BETTER_AUTH_SECRET;
+  const secret = process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET;
   if (!secret || secret.length < 32) {
-    throw new Error('BETTER_AUTH_SECRET must contain at least 32 characters');
+    throw new Error('BETTER_AUTH_SECRET or AUTH_SECRET must contain at least 32 characters');
   }
   return secret;
 }
 
+function getAuthBaseUrl(): string {
+  if (process.env.BETTER_AUTH_URL) {
+    return process.env.BETTER_AUTH_URL;
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return 'http://127.0.0.1:3000';
+}
+
 const sharedOptions = {
   appName: 'helpth0',
-  baseURL: process.env.BETTER_AUTH_URL ?? 'http://127.0.0.1:3000',
+  baseURL: getAuthBaseUrl(),
   secret: getAuthSecret(),
-  database: prismaAdapter(prisma, { provider: 'sqlite' }),
-  trustedOrigins: [...TRUSTED_AUTH_ORIGINS],
+  database: prismaAdapter(prisma, { provider: 'postgresql' }),
+  trustedOrigins: getTrustedOrigins(),
   session: {
     expiresIn: 60 * 60 * 12,
     updateAge: 60 * 60,
