@@ -16,7 +16,7 @@ describe('Prisma database URL', () => {
   });
 
   it('preserves postgresql connection strings without modification', () => {
-    const pgUrl = 'postgresql://user:password@ep-cool-fog-123456.us-east-2.aws.neon.tech/neondb?sslmode=require';
+    const pgUrl = 'postgresql://<user>:<password>@<neon-endpoint>.aws.neon.tech/neondb?sslmode=require';
     expect(getPrismaDatabaseUrl(pgUrl)).toBe(pgUrl);
   });
 });
