@@ -1,30 +1,29 @@
+import { requestJson } from '@/lib/api-client';
+
 export interface DoctorScheduleSetting {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
 }
 
-async function readJson(response: Response): Promise<Record<string, unknown>> {
-  return response.json().catch(() => ({}));
-}
-
-function failureMessage(payload: Record<string, unknown>, fallback: string): string {
-  return typeof payload.error === 'string' ? payload.error : fallback;
-}
-
+/**
+ * Doctor and schedule operations go through the shared client so a 401 on a
+ * dialog redirects to login and a 5xx says "error del servidor" instead of
+ * leaking a raw fetch failure.
+ */
 export async function registerDoctor(input: {
   name: string;
   specialty: string;
 }): Promise<void> {
-  const response = await fetch('/api/doctors', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
-  const payload = await readJson(response);
-  if (!response.ok || payload.success !== true) {
-    throw new Error(failureMessage(payload, 'Error al registrar médico'));
-  }
+  await requestJson(
+    '/api/doctors',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
+    'Error al registrar médico'
+  );
 }
 
 export async function updateDoctor(input: {
@@ -32,35 +31,34 @@ export async function updateDoctor(input: {
   name: string;
   specialty: string;
 }): Promise<void> {
-  const response = await fetch('/api/doctors', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
-  const payload = await readJson(response);
-  if (!response.ok || payload.success !== true) {
-    throw new Error(failureMessage(payload, 'Error al actualizar médico'));
-  }
+  await requestJson(
+    '/api/doctors',
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
+    'Error al actualizar médico'
+  );
 }
 
 export async function deactivateDoctor(id: string): Promise<void> {
-  const response = await fetch(`/api/doctors?id=${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-  const payload = await readJson(response);
-  if (!response.ok || payload.success !== true) {
-    throw new Error(failureMessage(payload, 'Error al desactivar médico'));
-  }
+  await requestJson(
+    `/api/doctors?id=${encodeURIComponent(id)}`,
+    { method: 'DELETE' },
+    'Error al desactivar médico'
+  );
 }
 
 export async function fetchDoctorSchedules(
   doctorId: string
 ): Promise<DoctorScheduleSetting[]> {
-  const response = await fetch(`/api/schedules?doctorId=${encodeURIComponent(doctorId)}`);
-  const payload = await readJson(response);
-  if (!response.ok || payload.success !== true) {
-    throw new Error(failureMessage(payload, 'Error al cargar los horarios'));
-  }
+  const payload = await requestJson<{ data?: unknown }>(
+    `/api/schedules?doctorId=${encodeURIComponent(doctorId)}`,
+    undefined,
+    'Error al cargar los horarios'
+  );
+
   return Array.isArray(payload.data) ? (payload.data as DoctorScheduleSetting[]) : [];
 }
 
@@ -68,13 +66,13 @@ export async function saveDoctorSchedules(
   doctorId: string,
   schedules: DoctorScheduleSetting[]
 ): Promise<void> {
-  const response = await fetch('/api/schedules', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ doctorId, schedules }),
-  });
-  const payload = await readJson(response);
-  if (!response.ok || payload.success !== true) {
-    throw new Error(failureMessage(payload, 'Error al guardar los horarios'));
-  }
+  await requestJson(
+    '/api/schedules',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doctorId, schedules }),
+    },
+    'Error al guardar los horarios'
+  );
 }

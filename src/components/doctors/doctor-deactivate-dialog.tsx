@@ -18,7 +18,7 @@ interface DoctorDeactivateDialogProps {
   doctor: DoctorListItem;
   onClose: () => void;
   onDeactivated: () => void;
-  onError: (text: string) => void;
+  onError: (error: unknown) => void;
 }
 
 export function DoctorDeactivateDialog({
@@ -35,7 +35,7 @@ export function DoctorDeactivateDialog({
       await deactivateDoctor(doctor.id);
       onDeactivated();
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Error de red al desactivar médico');
+      onError(error);
     } finally {
       setIsDeleting(false);
     }

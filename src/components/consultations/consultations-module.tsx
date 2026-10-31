@@ -2,7 +2,7 @@
 
 import React, { useCallback, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { FeedbackBanner } from '@/components/dashboard/feedback-banner';
+import { ImportErrorAlert } from '@/components/dashboard/import-error-alert';
 import { ImportRowErrors } from '@/components/dashboard/import-row-errors';
 import { notifyError, notifySuccess } from '@/components/dashboard/notify';
 import { useImportFlow } from '@/components/dashboard/use-import-flow';
@@ -84,16 +84,13 @@ export function ConsultationsModule({ consultations }: { consultations: Consulta
     }
   };
 
-  const dismissAlert = () => {
-    importFlow.dismissError();
-  };
   const alert = importFlow.error;
 
   return (
     <div className="space-y-6">
       {/* The alert lives outside the review branch: during review there is no
           table, and that is exactly where confirm failures used to disappear. */}
-      {alert && <FeedbackBanner message={{ type: 'error', text: alert }} onDismiss={dismissAlert} />}
+      {alert && <ImportErrorAlert message={alert} onDismiss={importFlow.dismissError} />}
 
       <ImportRowErrors errors={importFlow.rowErrors} onDismiss={importFlow.dismissRowErrors} />
 

@@ -45,8 +45,14 @@ describe('describeError', () => {
     });
   });
 
+  it('accepts a plain string as the message of a local validation rule', () => {
+    expect(
+      describeError('El nombre del médico es obligatorio', 'Error al registrar médico')
+    ).toStrictEqual({ title: 'El nombre del médico es obligatorio' });
+  });
+
   it('falls back to the caller copy for values that carry no message', () => {
-    expect(describeError('boom', 'Error al procesar archivo')).toStrictEqual({
+    expect(describeError(null, 'Error al procesar archivo')).toStrictEqual({
       title: 'Error al procesar archivo',
     });
   });

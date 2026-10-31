@@ -16,7 +16,7 @@ import { registerDoctor } from './doctor-directory-api';
 
 interface DoctorRegisterFormProps {
   onRegistered: (doctorName: string) => void;
-  onError: (text: string) => void;
+  onError: (error: unknown) => void;
 }
 
 export function DoctorRegisterForm({ onRegistered, onError }: DoctorRegisterFormProps) {
@@ -38,7 +38,7 @@ export function DoctorRegisterForm({ onRegistered, onError }: DoctorRegisterForm
       setSpecialty('');
       onRegistered(name.trim());
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Error de red al registrar médico');
+      onError(error);
     } finally {
       setIsSubmitting(false);
     }

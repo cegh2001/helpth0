@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { requestJson } from '@/lib/api-client';
 import type { DailyOverviewData } from './daily-overview';
 
 /**
@@ -10,18 +11,21 @@ import type { DailyOverviewData } from './daily-overview';
  */
 export function useDailyOverview(
   initialOverview: DailyOverviewData,
-  onError: (text: string) => void
+  onError: (error: unknown) => void
 ) {
   const [overview, setOverview] = useState(initialOverview);
   const [countQueues] = useState(() => new Map<string, Promise<void>>());
 
   const resync = useCallback(async () => {
     try {
-      const response = await fetch(`/api/overview?date=${overview.date}`);
-      const payload = await response.json();
-      if (payload.success) setOverview(payload.data);
+      const payload = await requestJson<{ data?: DailyOverviewData }>(
+        `/api/overview?date=${overview.date}`,
+        undefined,
+        'Error al recargar el resumen diario'
+      );
+      if (payload.data) setOverview(payload.data);
     } catch {
-      // The banner already reported the write failure; a second message would hide it.
+      // The write failure was already reported; a second toast would bury it.
     }
   }, [overview.date]);
 
@@ -49,29 +53,27 @@ export function useDailyOverview(
       const slotKey = `${doctorId}:${scheduleId ?? 'unassigned'}:${requestDate}`;
       const previousUpdate = countQueues.get(slotKey) ?? Promise.resolve();
       const pendingUpdate = previousUpdate.catch(() => undefined).then(async () => {
-        const response = await fetch('/api/counts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            doctorId,
-            scheduleId,
-            date: requestDate,
-            patientCount: newCount,
-          }),
-        });
-        const payload = await response.json();
-        if (!response.ok || !payload.success) {
-          throw new Error(payload.error || 'Error al guardar el conteo');
-        }
+        await requestJson(
+          '/api/counts',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              doctorId,
+              scheduleId,
+              date: requestDate,
+              patientCount: newCount,
+            }),
+          },
+          'Error al guardar el conteo'
+        );
       });
       countQueues.set(slotKey, pendingUpdate);
 
       try {
         await pendingUpdate;
       } catch (error) {
-        onError(
-          error instanceof Error ? error.message : 'Error al sincronizar con la base de datos'
-        );
+        onError(error);
         await resync();
       } finally {
         if (countQueues.get(slotKey) === pendingUpdate) {

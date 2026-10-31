@@ -42,6 +42,12 @@ export function describeError(error: unknown, fallbackTitle: string): ErrorCopy 
     return { title: error.message };
   }
 
+  // Local validation rules must not reach the toast as [object Object] or as a
+  // generic fallback: the message itself is the whole point.
+  if (typeof error === 'string' && error.trim()) {
+    return { title: error };
+  }
+
   return { title: fallbackTitle };
 }
 

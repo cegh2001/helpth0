@@ -2,8 +2,7 @@
 
 import { useCallback, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { FeedbackBanner } from '@/components/dashboard/feedback-banner';
-import { useFeedback } from '@/components/dashboard/use-feedback';
+import { notifyError, notifySuccess } from '@/components/dashboard/notify';
 import { useUrlState } from '@/components/dashboard/use-url-state';
 import { DoctorDeactivateDialog } from './doctor-deactivate-dialog';
 import { DoctorDirectory } from './doctor-directory';
@@ -21,7 +20,6 @@ export function DoctorsPage({
 }) {
   const router = useRouter();
   const [isRefreshing, startTransition] = useTransition();
-  const { feedback, showError, showSuccess, dismissFeedback } = useFeedback();
 
   const [search, setSearch] = useUrlState('q', initialQuery);
   const [editingDoctor, setEditingDoctor] = useState<DoctorListItem | null>(null);
@@ -34,33 +32,35 @@ export function DoctorsPage({
     startTransition(() => router.refresh());
   }, [router]);
 
+  const handleDoctorError = useCallback((error: unknown) => {
+    notifyError(error, 'No se pudo completar la operación', { id: 'doctors' });
+  }, []);
+
   const handleRegistered = (doctorName: string) => {
-    showSuccess(`Médico ${doctorName} registrado con éxito`);
+    notifySuccess(`Médico ${doctorName} registrado con éxito`, { id: 'doctors' });
     refresh();
   };
 
   const handleUpdated = () => {
-    showSuccess('Médico actualizado con éxito');
+    notifySuccess('Médico actualizado con éxito', { id: 'doctors' });
     setEditingDoctor(null);
     refresh();
   };
 
   const handleDeactivated = () => {
-    showSuccess(`Dr. ${deactivatingDoctor?.name ?? ''} desactivado`);
+    notifySuccess(`Dr. ${deactivatingDoctor?.name ?? ''} desactivado`, { id: 'doctors' });
     setDeactivatingDoctor(null);
     refresh();
   };
 
   const handleSchedulesSaved = () => {
-    showSuccess(`Horarios actualizados para ${schedulingDoctor?.name ?? ''}`);
+    notifySuccess(`Horarios actualizados para ${schedulingDoctor?.name ?? ''}`, { id: 'doctors' });
     setSchedulingDoctor(null);
     refresh();
   };
 
   return (
     <div className="space-y-6">
-      {feedback && <FeedbackBanner message={feedback} onDismiss={dismissFeedback} />}
-
       <div>
         <h1 className="text-lg font-bold text-slate-900">Médicos y Horarios</h1>
         <p className="text-xs text-slate-500">
@@ -69,7 +69,7 @@ export function DoctorsPage({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <DoctorRegisterForm onRegistered={handleRegistered} onError={showError} />
+        <DoctorRegisterForm onRegistered={handleRegistered} onError={handleDoctorError} />
         <DoctorDirectory
           doctors={initialDoctors}
           isLoading={isRefreshing}
@@ -86,7 +86,7 @@ export function DoctorsPage({
           doctor={editingDoctor}
           onClose={() => setEditingDoctor(null)}
           onUpdated={handleUpdated}
-          onError={showError}
+          onError={handleDoctorError}
         />
       )}
 
@@ -95,7 +95,7 @@ export function DoctorsPage({
           doctor={deactivatingDoctor}
           onClose={() => setDeactivatingDoctor(null)}
           onDeactivated={handleDeactivated}
-          onError={showError}
+          onError={handleDoctorError}
         />
       )}
 
@@ -104,7 +104,7 @@ export function DoctorsPage({
           doctor={schedulingDoctor}
           onClose={() => setSchedulingDoctor(null)}
           onSaved={handleSchedulesSaved}
-          onError={showError}
+          onError={handleDoctorError}
         />
       )}
     </div>

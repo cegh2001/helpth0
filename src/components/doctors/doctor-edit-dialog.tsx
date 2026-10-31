@@ -20,7 +20,7 @@ interface DoctorEditDialogProps {
   doctor: DoctorListItem;
   onClose: () => void;
   onUpdated: () => void;
-  onError: (text: string) => void;
+  onError: (error: unknown) => void;
 }
 
 export function DoctorEditDialog({
@@ -42,7 +42,7 @@ export function DoctorEditDialog({
       await updateDoctor({ id: doctor.id, name: name.trim(), specialty: specialty.trim() });
       onUpdated();
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Error de red al actualizar médico');
+      onError(error);
     } finally {
       setIsSaving(false);
     }

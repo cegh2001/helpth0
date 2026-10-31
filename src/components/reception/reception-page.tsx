@@ -1,14 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Stethoscope, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { FeedbackBanner } from '@/components/dashboard/feedback-banner';
-import { useFeedback } from '@/components/dashboard/use-feedback';
+import { notifyError } from '@/components/dashboard/notify';
 import { useUrlState } from '@/components/dashboard/use-url-state';
 import { ReportsTab } from '@/components/reports/reports-tab';
 import { formatLocalDate, getCurrentTimeString, getDoctorDutyStatus } from '@/lib/date-utils';
@@ -34,9 +33,12 @@ export function ReceptionPage({
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [currentTime, setCurrentTime] = useState<string>(() => getCurrentTimeString());
   const [search, setSearch] = useUrlState('q', initialQuery);
-  const { feedback, showError, dismissFeedback } = useFeedback();
 
-  const { overview, updateCount } = useDailyOverview(initialOverview, showError);
+  const handleOverviewError = useCallback((error: unknown) => {
+    notifyError(error, 'Error al guardar el conteo', { id: 'reception-count' });
+  }, []);
+
+  const { overview, updateCount } = useDailyOverview(initialOverview, handleOverviewError);
 
   const isToday = selectedDate === formatLocalDate();
 
@@ -69,8 +71,6 @@ export function ReceptionPage({
 
   return (
     <div className="space-y-6">
-      {feedback && <FeedbackBanner message={feedback} onDismiss={dismissFeedback} />}
-
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-lg font-bold text-slate-900">Recepción Diaria</h1>

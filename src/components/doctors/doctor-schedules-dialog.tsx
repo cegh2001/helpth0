@@ -31,7 +31,7 @@ interface DoctorSchedulesDialogProps {
   doctor: DoctorListItem;
   onClose: () => void;
   onSaved: () => void;
-  onError: (text: string) => void;
+  onError: (error: unknown) => void;
 }
 
 export function DoctorSchedulesDialog({
@@ -52,7 +52,7 @@ export function DoctorSchedulesDialog({
         if (!ignore) setSchedules(stored);
       } catch (error) {
         if (!ignore) {
-          onError(error instanceof Error ? error.message : 'Error al cargar los horarios');
+          onError(error);
           setSchedules([]);
         }
       } finally {
@@ -89,7 +89,7 @@ export function DoctorSchedulesDialog({
       await saveDoctorSchedules(doctor.id, schedules);
       onSaved();
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Error de red al guardar horarios');
+      onError(error);
     } finally {
       setIsSaving(false);
     }
