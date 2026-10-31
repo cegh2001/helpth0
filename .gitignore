@@ -54,3 +54,7 @@ prisma/*backup*.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local test uploads
+test_upload.xlsx
+*.xlsx

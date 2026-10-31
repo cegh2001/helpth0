@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       const duplicateCount = rowsWithStatus.length - newRowsCount;
 
       return NextResponse.json({
+        success: true,
         consultations: rowsWithStatus,
         summary: {
           ...parseResult.summary,
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
       csvContent,
       buffer: fileBuffer,
     });
-    return NextResponse.json(result);
+    return NextResponse.json({ success: true, ...result });
   } catch (error: unknown) {
     return apiErrorResponse(error, 'consultations.import.POST');
   }

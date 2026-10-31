@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       status,
     });
 
-    return NextResponse.json({ consultations });
+    return NextResponse.json({ success: true, data: consultations });
   } catch (error: unknown) {
     return apiErrorResponse(error, 'consultations.GET');
   }
