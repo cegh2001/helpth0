@@ -127,7 +127,7 @@ export default function DashboardPage() {
   const overviewRequestRef = useRef<AbortController | null>(null);
   const [countUpdateQueues] = useState(() => new Map<string, Promise<void>>());
   const [overviewRevision, setOverviewRevision] = useState(0);
-  const [activeTab, setActiveTab] = useState<string>('desk');
+  const [activeTab, setActiveTab] = useState<string>('consultations');
   const [feedbackMessage, setFeedbackMessage] = useState<{
     type: 'success' | 'error';
     text: string;
@@ -672,6 +672,14 @@ export default function DashboardPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="bg-slate-200/80 p-1 rounded-xl h-auto">
             <TabsTrigger
+              value="consultations"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2.5 px-4 text-xs font-semibold flex items-center space-x-2 cursor-pointer transition"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>Consultas y Pagos</span>
+            </TabsTrigger>
+
+            <TabsTrigger
               value="desk"
               className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2.5 px-4 text-xs font-semibold flex items-center space-x-2 cursor-pointer transition"
             >
@@ -686,17 +694,14 @@ export default function DashboardPage() {
               <Stethoscope className="w-4 h-4" />
               <span>Médicos y Horarios</span>
             </TabsTrigger>
-
-            <TabsTrigger
-              value="consultations"
-              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2.5 px-4 text-xs font-semibold flex items-center space-x-2 cursor-pointer transition"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <span>Consultas y Pagos</span>
-            </TabsTrigger>
           </TabsList>
 
-          {/* PESTAÑA 1: RECEPCIÓN DIARIA */}
+          {/* PESTAÑA 1: CONSULTAS Y PAGOS */}
+          <TabsContent value="consultations" className="mt-6">
+            <ConsultationsModule />
+          </TabsContent>
+
+          {/* PESTAÑA 2: RECEPCIÓN DIARIA */}
           <TabsContent value="desk" className="mt-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
@@ -1181,11 +1186,6 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-          </TabsContent>
-
-          {/* PESTAÑA 3: CONSULTAS Y PAGOS */}
-          <TabsContent value="consultations" className="mt-6">
-            <ConsultationsModule />
           </TabsContent>
         </Tabs>
       </main>
