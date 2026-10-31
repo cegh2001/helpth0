@@ -24,7 +24,9 @@ describe('apiErrorResponse', () => {
       success: false,
       error: 'Error interno del servidor',
     });
-    expect(errorSpy).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith('[test] request failed', {
+      errorType: 'Error',
+    });
     expect(JSON.stringify(errorSpy.mock.calls)).not.toContain('private internal detail');
     errorSpy.mockRestore();
   });

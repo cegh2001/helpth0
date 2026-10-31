@@ -8,7 +8,7 @@ describe('Doctor Entity', () => {
       specialty: 'Diagnostic Medicine',
     });
 
-    expect(doctor.id).toBeDefined();
+    expect(doctor.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(doctor.name).toBe('Dr. Gregory House');
     expect(doctor.specialty).toBe('Diagnostic Medicine');
     expect(doctor.isActive).toBe(true);

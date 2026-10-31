@@ -22,7 +22,7 @@ describe('Doctor Use Cases', () => {
       specialty: 'General Surgery',
     });
 
-    expect(result.id).toBeDefined();
+    expect(result.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(result.name).toBe('Dr. Meredith Grey');
     expect(result.specialty).toBe('General Surgery');
     expect(result.isActive).toBe(true);

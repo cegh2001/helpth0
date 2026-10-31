@@ -1,40 +1,47 @@
 # AGENTS.md — helpth0 AI Agent Constitution
 
-## 1. System & Architecture: Strict Hexagonal Monolith
-- **Stack**: Next.js 16, TypeScript, SQLite (Prisma 7), Vitest, ExcelJS, PDFKit, Better Auth (single local user).
-- **Domain (`src/core/domain/`)**: Pure business logic & entities. ZERO external dependencies. Forbidden: `next/*`, `@prisma/*`, `react`, infrastructure, or app imports.
-- **Application (`src/core/application/`)**: Use cases & repository/exporter ports. Never import infrastructure or delivery.
-- **Infrastructure (`src/infrastructure/`)**: Prisma repositories, ExcelJS/PDFKit exporters, DI container (`container.ts`).
-- **Delivery (`src/app/`)**: Next.js App Router & client UI. Consumes use cases solely via `src/infrastructure/container.ts`.
+Everything below is enforced by `pnpm lint` or `pnpm test`. A rule that is not in the linter is NOT a law: when you find a gap, add the rule instead of a reminder.
 
-## 2. Five Unbreakable Laws
-1. **Modularity (Hard Limit: 350 lines)**:
-   - ESLint enforces `max-lines: 350`. Extract cohesive domain concepts or custom hooks FIRST.
-   - Antipatter ban: Never create dumping grounds (`utils.ts`, `helpers.ts`, `common.ts`).
-2. **Direct Imports & No Barrels**:
-   - Wildcard re-exports (`export * from ...`) are banned. Import direct module paths to preserve boundaries and AST performance.
-3. **Strict TDD & In-Memory Unit Tests**:
-   - Unit tests (`tests/unit/`) execute purely in-memory using `tests/mocks/`. Zero SQLite, Prisma, or I/O access.
-   - For all testing tasks, apply the `.agents/skills/strict-testing` skill (no tautological mocks, no shallow assertions).
-4. **Data Privacy & Invariants**:
-   - Zero patient PII: only aggregate numeric headcounts and immutable shift timestamps.
-   - Legacy `DailyCount.notes` column is strictly suppressed: never expose in domain, API, UI, or exporters.
-5. **Single-User Security**:
-   - Production binds to `127.0.0.1`. `.env` ignored. Use `pnpm auth:ensure-secret`. Never log or commit credentials.
+## 1. Stack & Layers (strict hexagonal monolith)
+- Stack: Next.js 16 App Router, TypeScript, SQLite + Prisma 7, Vitest, ExcelJS, PDFKit, Better Auth (single local user).
+- `src/core/domain/` — entities, value objects, invariants. ZERO dependencies: no `next`, `react`, `@prisma/*`, `@/generated/*`, `@/infrastructure/*`, `@/app/*`, `@/lib/*`.
+- `src/core/application/` — use cases and ports. Depends only on domain.
+- `src/infrastructure/` — Prisma repositories, exporters, DI container (`container.ts`).
+- `src/app/` — App Router and client UI. Reaches infrastructure ONLY through `@/infrastructure/container`.
+- Imports are direct module paths. Barrels (`export * from`, `**/index`) and dumping grounds (`utils|helpers|common|misc|shared`) are lint errors.
 
-## 3. Essential Commands
+## 2. Modularity Budget
+- Hard fail: 350 lines for `src/**`, 500 for `tests/**` (blank lines and comments excluded). Never write up to the wall.
+- Soft stop at 250 lines: before adding code, extract a cohesive unit first.
+- Extraction order: domain invariant/value object → use case → custom hook → presentational subcomponent. NEVER `utils.ts`, `helpers.ts`, `component-part-2.tsx`.
+- `src/app/page.tsx` is frozen at its current budget (ratchet). Never raise its `max-lines`; lower it with each extraction.
+
+## 3. Testing
+- Unit (`tests/unit/`): pure in-memory, injecting `tests/mocks/`. Zero SQLite, Prisma, network or filesystem.
+- Integration (`tests/integration/`): the only place allowed to touch SQLite or real Excel/PDF buffers.
+- `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `toBeInstanceOf` and argument-less `toHaveBeenCalled()` are lint errors in `tests/unit`.
+- Before finishing, apply `.agents/skills/strict-testing` plus the mutation check: delete or invert the production invariant — if the test still passes, the test is worthless.
+
+## 4. Domain Invariants
+- No patient PII: aggregate headcounts and immutable shift timestamps only.
+- Legacy `DailyCount.notes` is suppressed: never in domain, API, UI or exporters.
+
+## 5. Security
+- Production binds `127.0.0.1`; `.env` stays ignored; secrets come from `pnpm auth:ensure-secret`. Never log or commit credentials.
+
+## 6. Commands
 ```bash
-pnpm test                 # Run all unit and integration tests (Vitest)
-pnpm lint                 # Deterministic linter (enforces limits and boundaries)
-pnpm build                # Production build
-pnpm auth:ensure-secret   # Generate local Better Auth secret if missing
-pnpm exec prisma migrate deploy # Apply migrations to SQLite
+pnpm lint       # deterministic gates — must be green before saying "done"
+pnpm test       # unit + integration suites
+pnpm verify     # lint + test
+pnpm build
+pnpm exec prisma migrate deploy
 ```
 
-## 4. Conventional Commits & Clean Diffs
-- Format: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`.
-- Zero AI attribution: No "Co-Authored-By", AI watermarks, or bot comments in commits.
-- English for code, identifiers, tests, and commit messages; professional Spanish for UI copy.
+## 7. Commits
+- Conventional commits in English: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`.
+- Zero AI attribution: no `Co-Authored-By`, watermarks or bot comments.
+- English for code, identifiers and commit messages; professional Spanish for UI copy.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

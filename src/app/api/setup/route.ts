@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { bootstrapAuth } from '@/lib/auth';
 import { ALLOWED_USER_EMAIL, isAllowedUserEmail, isTrustedLocalRequest } from '@/lib/auth-policy';
-import { prisma } from '@/infrastructure/persistence/prisma/prisma.client';
+import { checkSetupStatusUseCase } from '@/infrastructure/container';
 
 const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' };
 
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     return jsonResponse({ error: 'Solicitud no permitida' }, 403);
   }
 
-  return jsonResponse({ configured: await prisma.user.count() > 0 });
+  return jsonResponse({ configured: await checkSetupStatusUseCase.execute() });
 }
 
 export async function POST(request: Request) {
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     return jsonResponse({ error: 'Solicitud no permitida' }, 403);
   }
 
-  if (await prisma.user.count() > 0) {
+  if (await checkSetupStatusUseCase.execute()) {
     return jsonResponse({ error: 'La configuración inicial ya está cerrada' }, 409);
   }
 

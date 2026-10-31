@@ -13,7 +13,8 @@
     "auth:ensure-secret": "node scripts/ensure-auth-secret.mjs",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "verify": "pnpm lint && pnpm test"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "7.10.0",

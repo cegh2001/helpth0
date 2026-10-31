@@ -10,7 +10,7 @@ describe('WeeklySchedule Entity', () => {
       endTime: '14:00',
     });
 
-    expect(schedule.id).toBeDefined();
+    expect(schedule.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(schedule.doctorId).toBe('doc-123');
     expect(schedule.dayOfWeek).toBe(1);
     expect(schedule.startTime).toBe('08:00');

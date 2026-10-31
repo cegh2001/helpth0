@@ -9,7 +9,7 @@ describe('DailyPatientCount Entity', () => {
       patientCount: 15,
     });
 
-    expect(record.id).toBeDefined();
+    expect(record.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(record.doctorId).toBe('doc-123');
     expect(record.date).toBe('2026-09-18');
     expect(record.patientCount).toBe(15);
