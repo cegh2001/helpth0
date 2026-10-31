@@ -14,7 +14,7 @@ Everything below is enforced by `pnpm lint` or `pnpm test`. A rule that is not i
 - Hard fail: 350 lines for `src/**`, 500 for `tests/**` (blank lines and comments excluded). Never write up to the wall.
 - Soft stop at 250 lines: before adding code, extract a cohesive unit first.
 - Extraction order: domain invariant/value object → use case → custom hook → presentational subcomponent. NEVER `utils.ts`, `helpers.ts`, `component-part-2.tsx`.
-- `src/app/page.tsx` is frozen at its current budget (ratchet). Never raise its `max-lines`; lower it with each extraction.
+- The dashboard is a route group: `src/app/(dashboard)/` with one route per module (`/consultas`, `/examenes`, `/terapias`, `/recepcion`, `/medicos`). No navigation state for modules — the URL is the state.
 
 ## 3. Testing
 - Unit (`tests/unit/`): pure in-memory, injecting `tests/mocks/`. Zero SQLite, Prisma, network or filesystem.

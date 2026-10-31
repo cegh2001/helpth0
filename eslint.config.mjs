@@ -28,26 +28,11 @@ const eslintConfig = defineConfig([
   // 1. Physical file limits & modularity (src)
   {
     files: ["src/**/*.ts", "src/**/*.tsx"],
-    ignores: ["src/app/page.tsx"],
     rules: {
       "max-lines": [
         "error",
         {
           max: 350,
-          skipBlankLines: true,
-          skipComments: true,
-        },
-      ],
-    },
-  },
-  // Legacy dashboard page: frozen budget (ratchet). Lower `max` with every extraction.
-  {
-    files: ["src/app/page.tsx"],
-    rules: {
-      "max-lines": [
-        "error",
-        {
-          max: 1460,
           skipBlankLines: true,
           skipComments: true,
         },
