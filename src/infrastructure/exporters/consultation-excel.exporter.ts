@@ -5,14 +5,7 @@ import { ConsultationExporterPort } from '@/core/application/ports/consultation-
 export { type ConsultationExporterPort };
 export type ConsultationExcelExporter = ConsultationExporterPort;
 
-function getWeekBucket(dateStr: string): string {
-  // dateStr is "YYYY-MM-DD"
-  const day = parseInt(dateStr.slice(8, 10), 10);
-  if (day <= 7) return 'Semana 1';
-  if (day <= 14) return 'Semana 2';
-  if (day <= 21) return 'Semana 3';
-  return 'Semana 4';
-}
+import { appendStandardExcelSummary } from './standard-excel-summary.builder';
 
 export class ExcelJsConsultationExporter implements ConsultationExcelExporter {
   async exportToExcel(consultations: Consultation[], titlePeriod = 'OCTUBRE 2026'): Promise<Buffer> {
@@ -183,67 +176,8 @@ export class ExcelJsConsultationExporter implements ConsultationExcelExporter {
       fgColor: { argb: 'FFF1F5F9' },
     };
 
-    sheet.addRow([]); // Blank line
-
-    // 5. Weekly Distribution
-    const weeklyHeader = sheet.addRow(['', 'DISTRIBUCIÓN SEMANAL DETALLADA']);
-    weeklyHeader.font = { bold: true, size: 12, color: { argb: 'FF1E3A8A' } };
-
-    const weeklySubHeader = sheet.addRow([
-      '',
-      'Semana',
-      'Especialidad',
-      'Pacientes',
-      'Total Facturado (Bs)',
-    ]);
-    weeklySubHeader.font = { bold: true };
-    weeklySubHeader.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE2E8F0' },
-    };
-
-    // Group by (week, specialty)
-    const weekMap = new Map<string, Map<string, { count: number; totalBs: number }>>();
-
-    consultations.forEach((c) => {
-      const week = getWeekBucket(c.date);
-      if (!weekMap.has(week)) weekMap.set(week, new Map());
-      const specMap = weekMap.get(week)!;
-      const cur = specMap.get(c.specialty) || { count: 0, totalBs: 0 };
-      cur.count++;
-      cur.totalBs += c.totalBs;
-      specMap.set(c.specialty, cur);
-    });
-
-    const sortedWeeks = Array.from(weekMap.keys()).sort();
-    let accumulatedPatients = 0;
-    let accumulatedBs = 0;
-
-    for (const week of sortedWeeks) {
-      const specMap = weekMap.get(week)!;
-      for (const [specialty, data] of specMap.entries()) {
-        accumulatedPatients += data.count;
-        accumulatedBs += data.totalBs;
-        const row = sheet.addRow(['', week, specialty, data.count, data.totalBs]);
-        row.getCell(5).numFmt = '#,##0.00';
-      }
-    }
-
-    const weeklyTotalRow = sheet.addRow([
-      '',
-      'TOTAL ACUMULADO SEMANAL',
-      '',
-      accumulatedPatients,
-      accumulatedBs,
-    ]);
-    weeklyTotalRow.font = { bold: true };
-    weeklyTotalRow.getCell(5).numFmt = '#,##0.00';
-    weeklyTotalRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFF1F5F9' },
-    };
+    // 5. Standardized Weekly and Condition Matrices
+    appendStandardExcelSummary(sheet, consultations, 'CONSULTAS Y PAGOS', titlePeriod);
 
     const uint8Array = await workbook.xlsx.writeBuffer();
     return Buffer.from(uint8Array);

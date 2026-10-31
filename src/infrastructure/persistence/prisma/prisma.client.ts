@@ -16,6 +16,9 @@ function createPrismaClient(): PrismaClient {
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+export const prisma =
+  globalForPrisma.prisma && 'medicalExam' in globalForPrisma.prisma
+    ? globalForPrisma.prisma
+    : (globalForPrisma.prisma = createPrismaClient());
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;

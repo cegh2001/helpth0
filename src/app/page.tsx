@@ -68,6 +68,8 @@ import {
 import { authClient } from '@/lib/auth-client';
 import { ReportsTab } from '@/components/reports/reports-tab';
 import { ConsultationsModule } from '@/components/consultations/consultations-module';
+import { ExamsModule } from '@/components/exams/exams-module';
+import { FlaskConical } from 'lucide-react';
 
 interface ScheduleItem {
   startTime: string;
@@ -680,6 +682,14 @@ export default function DashboardPage() {
             </TabsTrigger>
 
             <TabsTrigger
+              value="exams"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2.5 px-4 text-xs font-semibold flex items-center space-x-2 cursor-pointer transition"
+            >
+              <FlaskConical className="w-4 h-4 text-blue-600" />
+              <span>Exámenes y Laboratorio</span>
+            </TabsTrigger>
+
+            <TabsTrigger
               value="desk"
               className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2.5 px-4 text-xs font-semibold flex items-center space-x-2 cursor-pointer transition"
             >
@@ -699,6 +709,11 @@ export default function DashboardPage() {
           {/* PESTAÑA 1: CONSULTAS Y PAGOS */}
           <TabsContent value="consultations" className="mt-6">
             <ConsultationsModule />
+          </TabsContent>
+
+          {/* PESTAÑA: EXÁMENES Y LABORATORIO */}
+          <TabsContent value="exams" className="mt-6">
+            <ExamsModule />
           </TabsContent>
 
           {/* PESTAÑA 2: RECEPCIÓN DIARIA */}

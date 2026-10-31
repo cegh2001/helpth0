@@ -4,10 +4,13 @@ import { PrismaScheduleRepository } from './persistence/repositories/prisma-sche
 import { PrismaDailyCountRepository } from './persistence/repositories/prisma-daily-count.repository';
 import { PrismaAdminAccountRepository } from './persistence/repositories/prisma-admin-account.repository';
 import { PrismaConsultationRepository } from './persistence/repositories/prisma-consultation.repository';
+import { PrismaMedicalExamRepository } from './persistence/repositories/prisma-medical-exam.repository';
 import { ExcelJsReportExporter } from './exporters/exceljs-report.exporter';
 import { PdfKitReportExporter } from './exporters/pdfkit-report.exporter';
 import { ExcelJsConsultationExporter } from './exporters/consultation-excel.exporter';
+import { ExcelJsMedicalExamExporter } from './exporters/medical-exam-excel.exporter';
 import { ConsultationCsvParser } from './parsers/consultation-excel.parser';
+import { MedicalExamExcelParser } from './parsers/medical-exam-excel.parser';
 
 import { RegisterDoctorUseCase } from '@/core/application/use-cases/doctor/register-doctor.use-case';
 import { UpdateDoctorUseCase } from '@/core/application/use-cases/doctor/update-doctor.use-case';
@@ -22,6 +25,9 @@ import { CheckSetupStatusUseCase } from '@/core/application/use-cases/setup/chec
 import { ImportConsultationsUseCase } from '@/core/application/use-cases/consultations/import-consultations.use-case';
 import { GetConsultationsUseCase } from '@/core/application/use-cases/consultations/get-consultations.use-case';
 import { ExportConsultationsUseCase } from '@/core/application/use-cases/consultations/export-consultations.use-case';
+import { ImportMedicalExamsUseCase } from '@/core/application/use-cases/exams/import-medical-exams.use-case';
+import { GetMedicalExamsUseCase } from '@/core/application/use-cases/exams/get-medical-exams.use-case';
+import { ExportMedicalExamsUseCase } from '@/core/application/use-cases/exams/export-medical-exams.use-case';
 
 // Persistence Repositories
 export const doctorRepository = new PrismaDoctorRepository(prisma);
@@ -29,12 +35,15 @@ export const scheduleRepository = new PrismaScheduleRepository(prisma);
 export const dailyCountRepository = new PrismaDailyCountRepository(prisma);
 export const adminAccountRepository = new PrismaAdminAccountRepository(prisma);
 export const consultationRepository = new PrismaConsultationRepository(prisma);
+export const medicalExamRepository = new PrismaMedicalExamRepository(prisma);
 
 // Exporters & Parsers
 export const excelExporter = new ExcelJsReportExporter();
 export const pdfExporter = new PdfKitReportExporter();
 export const consultationExcelExporter = new ExcelJsConsultationExporter();
+export const medicalExamExcelExporter = new ExcelJsMedicalExamExporter();
 export const consultationParser = new ConsultationCsvParser();
+export const medicalExamParser = new MedicalExamExcelParser();
 
 // Application Use Cases
 export const registerDoctorUseCase = new RegisterDoctorUseCase(doctorRepository);
@@ -74,4 +83,13 @@ export const getConsultationsUseCase = new GetConsultationsUseCase(consultationR
 export const exportConsultationsUseCase = new ExportConsultationsUseCase(
   consultationRepository,
   consultationExcelExporter
+);
+export const importMedicalExamsUseCase = new ImportMedicalExamsUseCase(
+  medicalExamRepository,
+  medicalExamParser
+);
+export const getMedicalExamsUseCase = new GetMedicalExamsUseCase(medicalExamRepository);
+export const exportMedicalExamsUseCase = new ExportMedicalExamsUseCase(
+  medicalExamRepository,
+  medicalExamExcelExporter
 );

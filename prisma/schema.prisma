@@ -128,6 +128,7 @@ model Patient {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   consultations Consultation[]
+  exams         MedicalExam[]
 
   @@index([cedula])
   @@index([fullName])
@@ -168,6 +169,40 @@ model Consultation {
   @@index([doctorId])
   @@index([doctorName])
   @@index([specialty])
+  @@index([status])
+}
+
+model MedicalExam {
+  id                  String   @id @default(cuid())
+  date                String   // Format: "YYYY-MM-DD"
+  patientId           String?
+  patient             Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  patientName         String
+  patientCedula       String?
+  patientBirthDate    String?
+  patientPhone        String?
+  patientAddress      String?
+  examName            String?
+
+  amountPointBs       Float    @default(0) // Punto
+  amountMobileBs      Float    @default(0) // Pago Movil
+  amountCashBs        Float    @default(0) // Efectivo Bs
+  bcvRate             Float    @default(0) // Tasa BCV
+  amountUsd           Float    @default(0) // Divisas ($)
+  totalBs             Float    @default(0) // Total en Bs
+
+  status              String   @default("COMPLETO") // COMPLETO, EXONERADO, PENDIENTE, REPETICION, etc.
+  exonerationPercent  Float    @default(0)
+  exoneratedAmountUsd Float    @default(0)
+  observations        String?
+
+  importHash          String   @unique
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([date])
+  @@index([patientName])
+  @@index([patientCedula])
   @@index([status])
 }
 
