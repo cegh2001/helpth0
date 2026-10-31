@@ -18,6 +18,8 @@ export interface ConsultationProps {
   amountUsd?: number;
   totalBs?: number;
   status?: string;
+  exonerationPercent?: number;
+  exoneratedAmountUsd?: number;
   observations?: string | null;
   importHash?: string;
   createdAt?: Date;
@@ -54,6 +56,8 @@ export class Consultation {
   readonly amountUsd: number;
   readonly totalBs: number;
   readonly status: string;
+  readonly exonerationPercent: number;
+  readonly exoneratedAmountUsd: number;
   readonly observations: string | null;
   readonly importHash: string;
   readonly createdAt: Date;
@@ -97,6 +101,8 @@ export class Consultation {
     this.totalBs = props.totalBs != null && props.totalBs > 0 ? props.totalBs : computedTotalBs;
 
     this.status = props.status?.trim() || 'COMPLETO';
+    this.exonerationPercent = Math.max(0, Math.min(100, props.exonerationPercent ?? 0));
+    this.exoneratedAmountUsd = Math.max(0, props.exoneratedAmountUsd ?? 0);
     this.observations = props.observations?.trim() || null;
 
     const subjectIdentifier = this.patientCedula || this.patientName;

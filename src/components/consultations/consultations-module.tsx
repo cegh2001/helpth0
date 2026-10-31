@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ConsultationsTable, ConsultationItem } from './consultations-table';
 import {
-  ConsultationsPreviewDialog,
+  ConsultationsReviewView,
   PreviewRow,
   PreviewSummary,
-} from './consultations-preview-dialog';
+} from './consultations-review-view';
 
 export function ConsultationsModule() {
   const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
@@ -19,7 +19,7 @@ export function ConsultationsModule() {
 
   // File import state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isReviewMode, setIsReviewMode] = useState(false);
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const [previewSummary, setPreviewSummary] = useState<PreviewSummary | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -101,7 +101,7 @@ export function ConsultationsModule() {
 
       setPreviewRows(data.consultations || []);
       setPreviewSummary(data.summary || null);
-      setIsPreviewOpen(true);
+      setIsReviewMode(true);
     } catch (err) {
       showFeedback('error', err instanceof Error ? err.message : 'Error al leer el archivo');
       setSelectedFile(null);
@@ -132,7 +132,7 @@ export function ConsultationsModule() {
         'success',
         `Importación completada: ${data.inserted} nuevas consultas ingresadas (${data.skippedDuplicates} duplicadas omitidas).`
       );
-      setIsPreviewOpen(false);
+      setIsReviewMode(false);
       setSelectedFile(null);
       fetchConsultations();
     } catch (err) {
@@ -163,6 +163,19 @@ export function ConsultationsModule() {
       setIsExporting(false);
     }
   };
+
+  if (isReviewMode) {
+    return (
+      <ConsultationsReviewView
+        fileName={selectedFile?.name || 'Planilla'}
+        rows={previewRows}
+        summary={previewSummary}
+        onCancel={() => setIsReviewMode(false)}
+        onConfirm={handleConfirmImport}
+        isConfirming={isConfirming}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -195,8 +208,8 @@ export function ConsultationsModule() {
                 <span>Cargar Planilla Semanal de Consultas</span>
               </h3>
               <p className="text-xs text-slate-500 max-w-xl">
-                Subí el archivo de pagos (.xlsx o .csv). El sistema detectará automáticamente los pacientes,
-                identificará duplicados existentes y te mostrará una previsualización antes de guardar.
+                Subí el archivo de pagos (.xlsx o .csv). Podrás revisar y validar cada consulta en pantalla completa,
+                con sus tasas BCV y montos exonerados detallados antes de ingresarlos.
               </p>
             </div>
 
@@ -231,16 +244,6 @@ export function ConsultationsModule() {
         onRefresh={fetchConsultations}
         onExport={handleExport}
         isExporting={isExporting}
-      />
-
-      {/* Modal de Previsualización */}
-      <ConsultationsPreviewDialog
-        open={isPreviewOpen}
-        onOpenChange={setIsPreviewOpen}
-        rows={previewRows}
-        summary={previewSummary}
-        onConfirm={handleConfirmImport}
-        isConfirming={isConfirming}
       />
     </div>
   );

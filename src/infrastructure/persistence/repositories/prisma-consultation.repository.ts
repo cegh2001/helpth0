@@ -88,6 +88,8 @@ export class PrismaConsultationRepository implements ConsultationRepository {
         amountUsd: consultation.amountUsd,
         totalBs: consultation.totalBs,
         status: consultation.status,
+        exonerationPercent: consultation.exonerationPercent,
+        exoneratedAmountUsd: consultation.exoneratedAmountUsd,
         observations: consultation.observations,
         importHash: consultation.importHash,
         createdAt: consultation.createdAt,
@@ -103,6 +105,8 @@ export class PrismaConsultationRepository implements ConsultationRepository {
         amountUsd: consultation.amountUsd,
         totalBs: consultation.totalBs,
         status: consultation.status,
+        exonerationPercent: consultation.exonerationPercent,
+        exoneratedAmountUsd: consultation.exoneratedAmountUsd,
         observations: consultation.observations,
         updatedAt: consultation.updatedAt,
       },
@@ -177,6 +181,8 @@ export class PrismaConsultationRepository implements ConsultationRepository {
     amountUsd: number;
     totalBs: number;
     status: string;
+    exonerationPercent?: number;
+    exoneratedAmountUsd?: number;
     observations: string | null;
     importHash: string;
     createdAt: Date;
@@ -199,6 +205,8 @@ export class PrismaConsultationRepository implements ConsultationRepository {
       amountUsd: raw.amountUsd,
       totalBs: raw.totalBs,
       status: raw.status,
+      exonerationPercent: raw.exonerationPercent ?? 0,
+      exoneratedAmountUsd: raw.exoneratedAmountUsd ?? 0,
       observations: raw.observations,
       importHash: raw.importHash,
       createdAt: raw.createdAt,

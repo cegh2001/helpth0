@@ -9,6 +9,11 @@ export interface ParseConsultationsSummary {
   totalParsed: number;
   totalAmountUsd: number;
   totalAmountBs: number;
+  totalExoneratedUsd: number;
+  exoneratedPatientsCount: number;
+  averageBcvRate: number;
+  minBcvRate: number;
+  maxBcvRate: number;
   uniqueDoctors: string[];
   uniqueSpecialties: string[];
   dateRange: { min: string; max: string } | null;

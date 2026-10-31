@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Download, Search, RefreshCw } from 'lucide-react';
+import { Download, Search, RefreshCw, TrendingUp, HeartHandshake } from 'lucide-react';
 
 export interface ConsultationItem {
   id: string;
@@ -21,6 +21,8 @@ export interface ConsultationItem {
   amountUsd: number;
   totalBs: number;
   status: string;
+  exonerationPercent: number;
+  exoneratedAmountUsd: number;
   observations: string | null;
 }
 
@@ -54,6 +56,23 @@ export function ConsultationsTable({
 
   const totalUsd = filtered.reduce((s, c) => s + c.amountUsd, 0);
   const totalBs = filtered.reduce((s, c) => s + c.totalBs, 0);
+  const totalExoneratedUsd = filtered.reduce((s, c) => s + (c.exoneratedAmountUsd || 0), 0);
+  const exoneratedCount = filtered.filter((c) => (c.exonerationPercent || 0) > 0).length;
+
+  const validRates = filtered.map((c) => c.bcvRate).filter((r) => r > 0);
+  const minRate = validRates.length > 0 ? Math.min(...validRates) : 0;
+  const maxRate = validRates.length > 0 ? Math.max(...validRates) : 0;
+  const avgRate =
+    validRates.length > 0
+      ? validRates.reduce((s, r) => s + r, 0) / validRates.length
+      : 0;
+
+  const rateDisplay =
+    minRate > 0 && maxRate > minRate
+      ? `Bs ${minRate.toFixed(2)} - ${maxRate.toFixed(2)}`
+      : avgRate > 0
+        ? `Bs ${avgRate.toFixed(2)}`
+        : '-';
 
   return (
     <div className="space-y-4">
@@ -94,18 +113,39 @@ export function ConsultationsTable({
       </div>
 
       {/* Métricas Resumidas */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs">
-          <span className="text-slate-500">Total Consultas Mostradas</span>
+          <span className="text-slate-500">Total Consultas</span>
           <p className="text-base font-bold text-slate-800">{filtered.length}</p>
+        </div>
+        <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs">
+          <span className="text-slate-500 flex items-center gap-1">
+            <TrendingUp className="w-3 h-3 text-blue-600" />
+            Tasa BCV Ref.
+          </span>
+          <p className="text-sm font-bold text-slate-800 mt-0.5 truncate" title={rateDisplay}>
+            {rateDisplay}
+          </p>
         </div>
         <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs">
           <span className="text-slate-500">Monto Facturado ($)</span>
           <p className="text-base font-bold text-blue-600">${totalUsd.toFixed(2)}</p>
         </div>
+        <div className="bg-white p-3 rounded-lg border border-purple-200 bg-purple-50/20 text-xs">
+          <span className="text-purple-700 font-medium flex items-center gap-1">
+            <HeartHandshake className="w-3 h-3" />
+            Exonerado ($)
+          </span>
+          <p className="text-base font-bold text-purple-800">
+            ${totalExoneratedUsd.toFixed(2)}
+            <span className="text-[10px] text-purple-600 ml-1 font-normal">({exoneratedCount} pac.)</span>
+          </p>
+        </div>
         <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs col-span-2 sm:col-span-1">
           <span className="text-slate-500">Total en Bolívares (Bs)</span>
-          <p className="text-base font-bold text-emerald-600">Bs {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</p>
+          <p className="text-base font-bold text-emerald-600">
+            Bs {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+          </p>
         </div>
       </div>
 
@@ -113,7 +153,7 @@ export function ConsultationsTable({
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto max-h-[550px]">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-600 font-semibold">
+            <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-600 font-semibold z-10">
               <tr>
                 <th className="p-3">#</th>
                 <th className="p-3">Fecha</th>
@@ -121,15 +161,17 @@ export function ConsultationsTable({
                 <th className="p-3">Cédula</th>
                 <th className="p-3">Médico</th>
                 <th className="p-3">Especialidad</th>
+                <th className="p-3 text-right">Tasa BCV</th>
                 <th className="p-3 text-right">Bs Facturados</th>
                 <th className="p-3 text-right">Divisas ($)</th>
+                <th className="p-3 text-center">Exoneración</th>
                 <th className="p-3">Estatus</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-slate-400">
+                  <td colSpan={11} className="p-8 text-center text-slate-400">
                     {isLoading ? 'Cargando datos...' : 'No se encontraron consultas registradas.'}
                   </td>
                 </tr>
@@ -139,14 +181,26 @@ export function ConsultationsTable({
                     <td className="p-3 text-slate-400 font-mono">{index + 1}</td>
                     <td className="p-3 whitespace-nowrap font-medium text-slate-700">{item.date}</td>
                     <td className="p-3 font-semibold text-slate-900">{item.patientName}</td>
-                    <td className="p-3 text-slate-600">{item.patientCedula || 'Sin Cédula'}</td>
-                    <td className="p-3 text-slate-700">{item.doctorName}</td>
-                    <td className="p-3 text-slate-600">{item.specialty}</td>
+                    <td className="p-3 text-slate-600 font-mono">{item.patientCedula || 'Sin Cédula'}</td>
+                    <td className="p-3 text-slate-700 whitespace-nowrap">{item.doctorName}</td>
+                    <td className="p-3 text-slate-600 whitespace-nowrap">{item.specialty}</td>
+                    <td className="p-3 text-right font-mono text-slate-700">
+                      {item.bcvRate > 0 ? `Bs ${item.bcvRate.toFixed(2)}` : '-'}
+                    </td>
                     <td className="p-3 text-right font-mono text-slate-800">
                       {item.totalBs > 0 ? item.totalBs.toFixed(2) : '-'}
                     </td>
                     <td className="p-3 text-right font-mono font-medium text-blue-700">
                       ${item.amountUsd}
+                    </td>
+                    <td className="p-3 text-center whitespace-nowrap">
+                      {item.exonerationPercent > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                          {item.exonerationPercent}% (${item.exoneratedAmountUsd})
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
                     </td>
                     <td className="p-3 whitespace-nowrap">
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">

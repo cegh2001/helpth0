@@ -91,4 +91,23 @@ describe('Consultation Entity', () => {
       })
     ).toThrow('Doctor name cannot be empty');
   });
+
+  it('correctly tracks bcvRate and exoneration metrics', () => {
+    const consultation = Consultation.create({
+      date: '2026-10-01',
+      patientName: 'Simon Lopez',
+      patientCedula: '4561810',
+      doctorName: 'Lic Maria Jose De Sousa',
+      specialty: 'Psicologia',
+      bcvRate: 860.17,
+      amountUsd: 15,
+      status: 'EXONERADO 100%',
+      exonerationPercent: 100,
+      exoneratedAmountUsd: 15,
+    });
+
+    expect(consultation.bcvRate).toBe(860.17);
+    expect(consultation.exonerationPercent).toBe(100);
+    expect(consultation.exoneratedAmountUsd).toBe(15);
+  });
 });

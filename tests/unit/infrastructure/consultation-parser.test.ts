@@ -61,6 +61,9 @@ describe('Consultation Excel/CSV Parser', () => {
     expect(result.summary.uniqueSpecialties).toContain('TRAUMATOLOGIA');
     expect(result.summary.uniqueSpecialties).toContain('PSICOLOGIA');
     expect(result.summary.totalAmountUsd).toBe(40);
+    expect(result.summary.totalExoneratedUsd).toBe(15);
+    expect(result.summary.exoneratedPatientsCount).toBe(1);
+    expect(result.summary.minBcvRate).toBe(860.17);
   });
 
   it('parses valid consultations from an Excel buffer', async () => {

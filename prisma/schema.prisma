@@ -152,8 +152,10 @@ model Consultation {
   amountUsd      Float    @default(0) // Divisas ($)
   totalBs        Float    @default(0) // Total en Bs
 
-  status         String   @default("COMPLETO") // COMPLETO, EXONERADO, PENDIENTE DE PAGO, etc.
-  observations   String?
+  status              String   @default("COMPLETO") // COMPLETO, EXONERADO, PENDIENTE DE PAGO, etc.
+  exonerationPercent  Float    @default(0) // Porcentaje exonerado (0-100)
+  exoneratedAmountUsd Float    @default(0) // Monto en $ exonerado
+  observations        String?
 
   importHash     String   @unique
   createdAt      DateTime @default(now())
