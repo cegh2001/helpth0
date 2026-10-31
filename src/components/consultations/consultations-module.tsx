@@ -110,18 +110,25 @@ export function ConsultationsModule() {
     }
   };
 
-  const handleConfirmImport = async () => {
-    if (!selectedFile) return;
+  const handleConfirmImport = async (editedRows?: PreviewRow[]) => {
+    if (!selectedFile && (!editedRows || editedRows.length === 0)) return;
     setIsConfirming(true);
 
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-
-      const res = await fetch('/api/consultations/import?action=confirm', {
-        method: 'POST',
-        body: formData,
-      });
+      const res = editedRows && editedRows.length > 0
+        ? await fetch('/api/consultations/import?action=confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ consultations: editedRows }),
+          })
+        : await fetch('/api/consultations/import?action=confirm', {
+            method: 'POST',
+            body: (() => {
+              const fd = new FormData();
+              if (selectedFile) fd.append('file', selectedFile);
+              return fd;
+            })(),
+          });
 
       const data = await res.json();
       if (!res.ok || data.error) {

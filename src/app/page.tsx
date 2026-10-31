@@ -522,7 +522,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Barra de Navegación Superior */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-sm shadow-primary/30">
               <Activity className="w-5 h-5" />
@@ -592,7 +592,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Contenedor Principal */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+      <main className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 space-y-6">
         {/* Alerta Toast */}
         {feedbackMessage && (
           <div

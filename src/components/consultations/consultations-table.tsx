@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Download, Search, RefreshCw, TrendingUp, HeartHandshake } from 'lucide-react';
 
 export interface ConsultationItem {
@@ -34,6 +35,64 @@ interface Props {
   isExporting: boolean;
 }
 
+function renderPaymentMethod(item: ConsultationItem) {
+  if (item.exonerationPercent === 100) {
+    return (
+      <Badge variant="outline" className="text-slate-500 bg-slate-50 border-slate-200 text-[10px]">
+        Exonerado
+      </Badge>
+    );
+  }
+
+  const parts: string[] = [];
+  if (item.amountPointBs > 0) parts.push('Punto');
+  if (item.amountMobileBs > 0) parts.push('P. Móvil');
+  if (item.amountCashBs > 0) parts.push('Efectivo');
+
+  if (parts.length === 0) {
+    if (item.amountUsd > 0) {
+      return (
+        <Badge variant="outline" className="text-blue-700 bg-blue-50 border-blue-200 text-[10px]">
+          Divisas ($)
+        </Badge>
+      );
+    }
+    return <span className="text-slate-400">-</span>;
+  }
+
+  if (parts.length === 1) {
+    const p = parts[0];
+    if (p === 'Punto') {
+      return (
+        <Badge variant="outline" className="text-blue-700 bg-blue-50 border-blue-200 text-[10px]">
+          Punto
+        </Badge>
+      );
+    }
+    if (p === 'P. Móvil') {
+      return (
+        <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200 text-[10px]">
+          Pago Móvil
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="text-amber-700 bg-amber-50 border-amber-200 text-[10px]">
+        Efectivo
+      </Badge>
+    );
+  }
+
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200"
+      title={parts.join(' + ')}
+    >
+      Mixto ({parts.join('+')})
+    </span>
+  );
+}
+
 export function ConsultationsTable({
   consultations,
   isLoading,
@@ -63,9 +122,7 @@ export function ConsultationsTable({
   const minRate = validRates.length > 0 ? Math.min(...validRates) : 0;
   const maxRate = validRates.length > 0 ? Math.max(...validRates) : 0;
   const avgRate =
-    validRates.length > 0
-      ? validRates.reduce((s, r) => s + r, 0) / validRates.length
-      : 0;
+    validRates.length > 0 ? validRates.reduce((s, r) => s + r, 0) / validRates.length : 0;
 
   const rateDisplay =
     minRate > 0 && maxRate > minRate
@@ -149,29 +206,30 @@ export function ConsultationsTable({
         </div>
       </div>
 
-      {/* Tabla Principal */}
+      {/* Tabla Principal con Scroll Horizontal Amplio */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto max-h-[550px]">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="overflow-x-auto max-h-[600px] w-full">
+          <table className="min-w-[1350px] w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-600 font-semibold z-10">
               <tr>
-                <th className="p-3">#</th>
-                <th className="p-3">Fecha</th>
+                <th className="p-3 w-12">#</th>
+                <th className="p-3 w-28">Fecha</th>
                 <th className="p-3">Paciente</th>
-                <th className="p-3">Cédula</th>
+                <th className="p-3 w-28">Cédula</th>
                 <th className="p-3">Médico</th>
                 <th className="p-3">Especialidad</th>
-                <th className="p-3 text-right">Tasa BCV</th>
-                <th className="p-3 text-right">Bs Facturados</th>
-                <th className="p-3 text-right">Divisas ($)</th>
-                <th className="p-3 text-center">Exoneración</th>
-                <th className="p-3">Estatus</th>
+                <th className="p-3 w-28 text-center">Tipo de Pago</th>
+                <th className="p-3 w-28 text-right">Tasa BCV</th>
+                <th className="p-3 w-32 text-right">Bs Facturados</th>
+                <th className="p-3 w-24 text-right">Divisas ($)</th>
+                <th className="p-3 w-32 text-center">Exoneración</th>
+                <th className="p-3 w-28">Estatus</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="p-8 text-center text-slate-400">
+                  <td colSpan={12} className="p-8 text-center text-slate-400">
                     {isLoading ? 'Cargando datos...' : 'No se encontraron consultas registradas.'}
                   </td>
                 </tr>
@@ -184,6 +242,7 @@ export function ConsultationsTable({
                     <td className="p-3 text-slate-600 font-mono">{item.patientCedula || 'Sin Cédula'}</td>
                     <td className="p-3 text-slate-700 whitespace-nowrap">{item.doctorName}</td>
                     <td className="p-3 text-slate-600 whitespace-nowrap">{item.specialty}</td>
+                    <td className="p-3 text-center whitespace-nowrap">{renderPaymentMethod(item)}</td>
                     <td className="p-3 text-right font-mono text-slate-700">
                       {item.bcvRate > 0 ? `Bs ${item.bcvRate.toFixed(2)}` : '-'}
                     </td>

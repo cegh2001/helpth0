@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
 
     let csvContent: string | undefined;
     let fileBuffer: Buffer | undefined;
+    let incomingConsultations: unknown = undefined;
 
     const contentType = request.headers.get('content-type') || '';
 
@@ -38,10 +39,16 @@ export async function POST(request: NextRequest) {
       }
     } else {
       const body = await request.json().catch(() => null);
-      if (!body || !body.csvContent) {
-        return NextResponse.json({ error: 'Contenido CSV o archivo requerido' }, { status: 400 });
+      if (!body) {
+        return NextResponse.json({ error: 'Cuerpo de solicitud requerido' }, { status: 400 });
       }
-      csvContent = body.csvContent;
+      if (Array.isArray(body.consultations)) {
+        incomingConsultations = body.consultations;
+      } else if (body.csvContent) {
+        csvContent = body.csvContent;
+      } else {
+        return NextResponse.json({ error: 'Contenido CSV o consultas requerido' }, { status: 400 });
+      }
     }
 
     if (action === 'preview') {
@@ -84,6 +91,7 @@ export async function POST(request: NextRequest) {
     const result = await importConsultationsUseCase.execute({
       csvContent,
       buffer: fileBuffer,
+      consultations: incomingConsultations as never,
     });
     return NextResponse.json({ success: true, ...result });
   } catch (error: unknown) {
