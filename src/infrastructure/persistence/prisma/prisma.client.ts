@@ -1,10 +1,10 @@
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '@/generated/prisma/client';
 import { getPrismaDatabaseUrl } from '../../../../prisma/database-url';
-import { isPrismaClientCurrent } from './prisma-client-guard';
+import { CachedPrismaClient, isPrismaClientCurrent } from './prisma-client-guard';
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma?: CachedPrismaClient;
 };
 
 function createPrismaClient(): PrismaClient {
@@ -17,9 +17,15 @@ function createPrismaClient(): PrismaClient {
   });
 }
 
-export const prisma =
-  globalForPrisma.prisma && isPrismaClientCurrent(globalForPrisma.prisma)
-    ? globalForPrisma.prisma
-    : (globalForPrisma.prisma = createPrismaClient());
+function resolvePrismaClient(): PrismaClient {
+  const cached = globalForPrisma.prisma;
+  if (cached && isPrismaClientCurrent(cached)) {
+    return cached.client;
+  }
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+  const client = createPrismaClient();
+  globalForPrisma.prisma = { client, builtFrom: PrismaClient };
+  return client;
+}
+
+export const prisma = resolvePrismaClient();
