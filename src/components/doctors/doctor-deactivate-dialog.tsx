@@ -11,7 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { deactivateDoctor, type DoctorListItem } from './doctor-directory-api';
+import { deactivateDoctor } from './doctor-directory-api';
+import type { DoctorListItem } from './doctor-list-item';
 
 interface DoctorDeactivateDialogProps {
   doctor: DoctorListItem;

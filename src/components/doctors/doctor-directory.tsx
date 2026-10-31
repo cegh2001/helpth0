@@ -4,7 +4,7 @@ import { CalendarDays, Pencil, Search, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import type { DoctorListItem } from './doctor-directory-api';
+import type { DoctorListItem } from './doctor-list-item';
 
 interface DoctorDirectoryProps {
   doctors: DoctorListItem[];

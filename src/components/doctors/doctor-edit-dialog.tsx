@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { updateDoctor, type DoctorListItem } from './doctor-directory-api';
+import { updateDoctor } from './doctor-directory-api';
+import type { DoctorListItem } from './doctor-list-item';
 
 interface DoctorEditDialogProps {
   doctor: DoctorListItem;

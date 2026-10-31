@@ -1,47 +1,60 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { FeedbackBanner } from '@/components/dashboard/feedback-banner';
 import { useFeedback } from '@/components/dashboard/use-feedback';
 import { useUrlState } from '@/components/dashboard/use-url-state';
-import type { DoctorListItem } from './doctor-directory-api';
 import { DoctorDeactivateDialog } from './doctor-deactivate-dialog';
 import { DoctorDirectory } from './doctor-directory';
 import { DoctorEditDialog } from './doctor-edit-dialog';
+import type { DoctorListItem } from './doctor-list-item';
 import { DoctorRegisterForm } from './doctor-register-form';
 import { DoctorSchedulesDialog } from './doctor-schedules-dialog';
-import { useDoctorDirectory } from './use-doctor-directory';
 
-export function DoctorsPage({ initialQuery }: { initialQuery: string }) {
+export function DoctorsPage({
+  initialDoctors,
+  initialQuery,
+}: {
+  initialDoctors: DoctorListItem[];
+  initialQuery: string;
+}) {
+  const router = useRouter();
+  const [isRefreshing, startTransition] = useTransition();
   const { feedback, showError, showSuccess, dismissFeedback } = useFeedback();
-  const { doctors, isLoading, refresh } = useDoctorDirectory(showError);
 
   const [search, setSearch] = useUrlState('q', initialQuery);
   const [editingDoctor, setEditingDoctor] = useState<DoctorListItem | null>(null);
   const [deactivatingDoctor, setDeactivatingDoctor] = useState<DoctorListItem | null>(null);
   const [schedulingDoctor, setSchedulingDoctor] = useState<DoctorListItem | null>(null);
 
+  // The directory is read on the server: after a mutation we ask the route for a
+  // new render instead of refetching the list in the browser.
+  const refresh = useCallback(() => {
+    startTransition(() => router.refresh());
+  }, [router]);
+
   const handleRegistered = (doctorName: string) => {
     showSuccess(`Médico ${doctorName} registrado con éxito`);
-    void refresh();
+    refresh();
   };
 
   const handleUpdated = () => {
     showSuccess('Médico actualizado con éxito');
     setEditingDoctor(null);
-    void refresh();
+    refresh();
   };
 
   const handleDeactivated = () => {
     showSuccess(`Dr. ${deactivatingDoctor?.name ?? ''} desactivado`);
     setDeactivatingDoctor(null);
-    void refresh();
+    refresh();
   };
 
   const handleSchedulesSaved = () => {
     showSuccess(`Horarios actualizados para ${schedulingDoctor?.name ?? ''}`);
     setSchedulingDoctor(null);
-    void refresh();
+    refresh();
   };
 
   return (
@@ -58,8 +71,8 @@ export function DoctorsPage({ initialQuery }: { initialQuery: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <DoctorRegisterForm onRegistered={handleRegistered} onError={showError} />
         <DoctorDirectory
-          doctors={doctors}
-          isLoading={isLoading}
+          doctors={initialDoctors}
+          isLoading={isRefreshing}
           search={search}
           onSearchChange={setSearch}
           onEdit={setEditingDoctor}

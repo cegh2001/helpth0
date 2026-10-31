@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { FeedbackBanner } from '@/components/dashboard/feedback-banner';
 import { ImportRowErrors } from '@/components/dashboard/import-row-errors';
-import { describeErrorText, notifyError, notifySuccess } from '@/components/dashboard/notify';
+import { notifyError, notifySuccess } from '@/components/dashboard/notify';
 import { useImportFlow } from '@/components/dashboard/use-import-flow';
-import { requestFile, requestJson } from '@/lib/api-client';
+import { requestFile } from '@/lib/api-client';
 import { resolveExportFileName } from '@/lib/export-file-name';
 import { saveBlob } from '@/lib/save-blob';
 import { ConsultationsTable } from './consultations-table';
@@ -22,48 +23,18 @@ interface ExportFilters {
   period?: string;
 }
 
-export function ConsultationsModule() {
-  const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function ConsultationsModule({ consultations }: { consultations: ConsultationItem[] }) {
+  const router = useRouter();
+  const [isRefreshing, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchConsultations = useCallback(async () => {
-    try {
-      const payload = await requestJson<{ data?: ConsultationItem[] }>(
-        '/api/consultations',
-        undefined,
-        'Error al obtener consultas'
-      );
-      setConsultations(payload.data ?? []);
-      setLoadError(null);
-    } catch (err) {
-      setLoadError(describeErrorText(err, 'Error al obtener consultas'));
-      notifyError(err, 'Error al obtener consultas', { id: 'consultations-load' });
-    }
-  }, []);
-
-  const refreshConsultations = useCallback(async () => {
-    setIsLoading(true);
-    await fetchConsultations();
-    setIsLoading(false);
-  }, [fetchConsultations]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadInitial() {
-      await fetchConsultations();
-      if (!cancelled) setIsLoading(false);
-    }
-
-    void loadInitial();
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchConsultations]);
+  // The list is read on the server: refreshing means asking the route for a new
+  // render, not refetching it in the browser.
+  const refreshConsultations = useCallback(() => {
+    startTransition(() => router.refresh());
+  }, [router]);
 
   const importFlow = useImportFlow<PreviewRow, PreviewSummary>({
     endpoint: '/api/consultations/import',
@@ -72,9 +43,7 @@ export function ConsultationsModule() {
     confirmFallback: 'Error al guardar los datos',
     describeSuccess: (result) =>
       `Importación completada: ${result.inserted} nuevas consultas (${result.skippedDuplicates} duplicadas omitidas).`,
-    onImported: () => {
-      void refreshConsultations();
-    },
+    onImported: refreshConsultations,
   });
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,9 +86,8 @@ export function ConsultationsModule() {
 
   const dismissAlert = () => {
     importFlow.dismissError();
-    setLoadError(null);
   };
-  const alert = importFlow.error ?? loadError;
+  const alert = importFlow.error;
 
   return (
     <div className="space-y-6">
@@ -150,7 +118,7 @@ export function ConsultationsModule() {
       ) : (
         <ConsultationsTable
           consultations={consultations}
-          isLoading={isLoading}
+          isLoading={isRefreshing}
           onRefresh={refreshConsultations}
           onExport={handleExport}
           isExporting={isExporting}

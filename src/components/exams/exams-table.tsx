@@ -8,27 +8,7 @@ import {
   ExamFilterState,
 } from './exams-filter-bar';
 import { ExportExamsDialog } from './export-exams-dialog';
-
-export interface MedicalExamItem {
-  id: string;
-  date: string;
-  patientName: string;
-  patientCedula: string | null;
-  patientBirthDate: string | null;
-  patientPhone: string | null;
-  patientAddress: string | null;
-  examName: string | null;
-  amountPointBs: number;
-  amountMobileBs: number;
-  amountCashBs: number;
-  bcvRate: number;
-  amountUsd: number;
-  totalBs: number;
-  status: string;
-  exonerationPercent: number;
-  exoneratedAmountUsd: number;
-  observations: string | null;
-}
+import type { MedicalExamItem } from './medical-exam-item';
 
 interface Props {
   exams: MedicalExamItem[];

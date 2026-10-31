@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Stethoscope, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,8 +12,9 @@ import { useFeedback } from '@/components/dashboard/use-feedback';
 import { useUrlState } from '@/components/dashboard/use-url-state';
 import { ReportsTab } from '@/components/reports/reports-tab';
 import { formatLocalDate, getCurrentTimeString, getDoctorDutyStatus } from '@/lib/date-utils';
+import { joinUrl, setSearchParam } from '@/lib/search-params';
 import { WEEKDAY_NAMES } from '@/lib/weekday-names';
-import { filterDoctorsByQuery } from './daily-overview';
+import { filterDoctorsByQuery, type DailyOverviewData } from './daily-overview';
 import { DoctorCountCard } from './doctor-count-card';
 import { ReceptionDateNavigator } from './reception-date-navigator';
 import { ReceptionSummaryCards } from './reception-summary-cards';
@@ -21,19 +23,20 @@ import { useDailyOverview } from './use-daily-overview';
 export function ReceptionPage({
   initialDate,
   initialQuery,
+  initialOverview,
 }: {
   initialDate: string;
   initialQuery: string;
+  initialOverview: DailyOverviewData;
 }) {
-  const [selectedDate, setSelectedDate] = useUrlState('date', initialDate, formatLocalDate());
+  const router = useRouter();
+  const [isNavigating, startNavigation] = useTransition();
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [currentTime, setCurrentTime] = useState<string>(() => getCurrentTimeString());
   const [search, setSearch] = useUrlState('q', initialQuery);
   const { feedback, showError, dismissFeedback } = useFeedback();
 
-  const { overview, loading, markLoading, updateCount } = useDailyOverview({
-    date: selectedDate,
-    onError: showError,
-  });
+  const { overview, updateCount } = useDailyOverview(initialOverview, showError);
 
   const isToday = selectedDate === formatLocalDate();
 
@@ -42,16 +45,26 @@ export function ReceptionPage({
     return () => clearInterval(timer);
   }, []);
 
-  const doctors = useMemo(() => overview?.doctors ?? [], [overview]);
+  const doctors = useMemo(() => overview.doctors, [overview]);
   const activeNowCount = doctors.filter(
     (doctor) => getDoctorDutyStatus(doctor.schedules, isToday, currentTime) === 'on_duty'
   ).length;
   const scheduledTodayCount = doctors.filter((doctor) => doctor.scheduledToday).length;
   const visibleDoctors = filterDoctorsByQuery(doctors, search);
 
+  // The day lives in the URL and is rendered on the server: changing it is a
+  // navigation, not a local refetch.
   const handleDateChange = (date: string) => {
-    markLoading();
     setSelectedDate(date);
+    startNavigation(() => {
+      const query = setSearchParam(
+        window.location.search,
+        'date',
+        date,
+        formatLocalDate()
+      );
+      router.replace(joinUrl(window.location.pathname, query), { scroll: false });
+    });
   };
 
   return (
@@ -62,14 +75,14 @@ export function ReceptionPage({
         <div>
           <h1 className="text-lg font-bold text-slate-900">Recepción Diaria</h1>
           <p className="text-xs text-slate-500">
-            Conteo para el {WEEKDAY_NAMES[overview?.dayOfWeek ?? 0]}, {selectedDate}
+            Conteo para el {WEEKDAY_NAMES[overview.dayOfWeek]}, {selectedDate}
           </p>
         </div>
         <ReceptionDateNavigator value={selectedDate} onChange={handleDateChange} />
       </div>
 
       <ReceptionSummaryCards
-        loading={loading}
+        loading={isNavigating}
         overview={overview}
         activeNowCount={activeNowCount}
         scheduledTodayCount={scheduledTodayCount}
@@ -113,7 +126,7 @@ export function ReceptionPage({
           )}
         </div>
 
-        {loading ? (
+        {isNavigating ? (
           <div className="py-16 text-center text-slate-400">Cargando datos del día...</div>
         ) : doctors.length === 0 ? (
           <Card className="border-dashed p-12 text-center space-y-4 bg-white">

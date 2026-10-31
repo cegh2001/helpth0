@@ -1,73 +1,37 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useState } from 'react';
 import type { DailyOverviewData } from './daily-overview';
 
-interface UseDailyOverviewOptions {
-  date: string;
-  onError: (text: string) => void;
-}
-
-export function useDailyOverview({ date, onError }: UseDailyOverviewOptions) {
-  const router = useRouter();
-  const [overview, setOverview] = useState<DailyOverviewData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [revision, setRevision] = useState(0);
-  const requestRef = useRef<AbortController | null>(null);
+/**
+ * The day overview arrives rendered from the server. This hook only owns the
+ * optimistic count updates: the browser paints the new number immediately, the
+ * write goes to the API, and a failure resyncs with the server truth.
+ */
+export function useDailyOverview(
+  initialOverview: DailyOverviewData,
+  onError: (text: string) => void
+) {
+  const [overview, setOverview] = useState(initialOverview);
   const [countQueues] = useState(() => new Map<string, Promise<void>>());
 
-  useEffect(() => {
-    requestRef.current?.abort();
-    const controller = new AbortController();
-    requestRef.current = controller;
-
-    async function loadOverview() {
-      try {
-        const response = await fetch(`/api/overview?date=${date}`, {
-          signal: controller.signal,
-        });
-        if (response.status === 401) {
-          router.replace('/login');
-          return;
-        }
-
-        const payload = await response.json();
-        if (controller.signal.aborted) return;
-        if (payload.success) {
-          setOverview(payload.data);
-        } else {
-          onError(payload.error || 'Error al cargar el resumen diario');
-        }
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-        onError('Error de conexión al cargar datos');
-      } finally {
-        if (requestRef.current === controller) {
-          setLoading(false);
-        }
-      }
+  const resync = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/overview?date=${overview.date}`);
+      const payload = await response.json();
+      if (payload.success) setOverview(payload.data);
+    } catch {
+      // The banner already reported the write failure; a second message would hide it.
     }
-
-    void loadOverview();
-    return () => controller.abort();
-  }, [date, revision, router, onError]);
-
-  const refresh = useCallback(() => {
-    setRevision((current) => current + 1);
-  }, []);
-
-  const markLoading = useCallback(() => {
-    setLoading(true);
-  }, []);
+  }, [overview.date]);
 
   const updateCount = useCallback(
     async (doctorId: string, scheduleId: string | null, newCount: number) => {
       if (newCount < 0) return;
-      const requestDate = date;
+      const requestDate = overview.date;
 
       setOverview((currentOverview) => {
-        if (!currentOverview || currentOverview.date !== requestDate) return currentOverview;
+        if (currentOverview.date !== requestDate) return currentOverview;
         const updatedDoctors = currentOverview.doctors.map((doctor) => {
           if (doctor.doctorId !== doctorId) return doctor;
           const updatedSlots = (doctor.shiftSlots || []).map((slot) =>
@@ -108,15 +72,15 @@ export function useDailyOverview({ date, onError }: UseDailyOverviewOptions) {
         onError(
           error instanceof Error ? error.message : 'Error al sincronizar con la base de datos'
         );
-        refresh();
+        await resync();
       } finally {
         if (countQueues.get(slotKey) === pendingUpdate) {
           countQueues.delete(slotKey);
         }
       }
     },
-    [countQueues, date, onError, refresh]
+    [countQueues, onError, overview.date, resync]
   );
 
-  return { overview, loading, markLoading, refresh, updateCount };
+  return { overview, updateCount };
 }

@@ -8,27 +8,7 @@ import {
   FilterState,
 } from './consultations-filter-bar';
 import { ExportConsultationsDialog } from './export-consultations-dialog';
-
-export interface ConsultationItem {
-  id: string;
-  date: string;
-  patientName: string;
-  patientCedula: string | null;
-  patientPhone: string | null;
-  patientAddress: string | null;
-  doctorName: string;
-  specialty: string;
-  amountPointBs: number;
-  amountMobileBs: number;
-  amountCashBs: number;
-  bcvRate: number;
-  amountUsd: number;
-  totalBs: number;
-  status: string;
-  exonerationPercent: number;
-  exoneratedAmountUsd: number;
-  observations: string | null;
-}
+import type { ConsultationItem } from './consultation-item';
 
 interface Props {
   consultations: ConsultationItem[];

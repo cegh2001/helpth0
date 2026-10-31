@@ -23,9 +23,9 @@ import { WEEKDAY_NAMES } from '@/lib/weekday-names';
 import {
   fetchDoctorSchedules,
   saveDoctorSchedules,
-  type DoctorListItem,
   type DoctorScheduleSetting,
 } from './doctor-directory-api';
+import type { DoctorListItem } from './doctor-list-item';
 
 interface DoctorSchedulesDialogProps {
   doctor: DoctorListItem;

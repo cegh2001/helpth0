@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { FeedbackBanner } from '@/components/dashboard/feedback-banner';
 import { ImportRowErrors } from '@/components/dashboard/import-row-errors';
-import { describeErrorText, notifyError, notifySuccess } from '@/components/dashboard/notify';
+import { notifyError, notifySuccess } from '@/components/dashboard/notify';
 import { useImportFlow } from '@/components/dashboard/use-import-flow';
-import { requestFile, requestJson } from '@/lib/api-client';
+import { requestFile } from '@/lib/api-client';
 import { resolveExportFileName } from '@/lib/export-file-name';
 import { saveBlob } from '@/lib/save-blob';
 import { ExamsTable } from './exams-table';
@@ -18,48 +19,18 @@ interface ExportFilters {
   period?: string;
 }
 
-export function ExamsModule() {
-  const [exams, setExams] = useState<MedicalExamItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function ExamsModule({ exams }: { exams: MedicalExamItem[] }) {
+  const router = useRouter();
+  const [isRefreshing, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchExams = useCallback(async () => {
-    try {
-      const payload = await requestJson<{ data?: MedicalExamItem[] }>(
-        '/api/exams',
-        undefined,
-        'Error al obtener exámenes'
-      );
-      setExams(payload.data ?? []);
-      setLoadError(null);
-    } catch (err) {
-      setLoadError(describeErrorText(err, 'Error al obtener exámenes'));
-      notifyError(err, 'Error al obtener exámenes', { id: 'exams-load' });
-    }
-  }, []);
-
-  const refreshExams = useCallback(async () => {
-    setIsLoading(true);
-    await fetchExams();
-    setIsLoading(false);
-  }, [fetchExams]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadInitial() {
-      await fetchExams();
-      if (!cancelled) setIsLoading(false);
-    }
-
-    void loadInitial();
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchExams]);
+  // The list is read on the server: refreshing means asking the route for a new
+  // render, not refetching it in the browser.
+  const refreshExams = useCallback(() => {
+    startTransition(() => router.refresh());
+  }, [router]);
 
   const importFlow = useImportFlow<ExamPreviewRow, ExamPreviewSummary>({
     endpoint: '/api/exams/import',
@@ -68,9 +39,7 @@ export function ExamsModule() {
     confirmFallback: 'Error al guardar los datos',
     describeSuccess: (result) =>
       `Importación completada: ${result.inserted} nuevos exámenes (${result.skippedDuplicates} duplicados omitidos).`,
-    onImported: () => {
-      void refreshExams();
-    },
+    onImported: refreshExams,
   });
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,9 +82,8 @@ export function ExamsModule() {
 
   const dismissAlert = () => {
     importFlow.dismissError();
-    setLoadError(null);
   };
-  const alert = importFlow.error ?? loadError;
+  const alert = importFlow.error;
 
   return (
     <div className="space-y-6">
@@ -146,7 +114,7 @@ export function ExamsModule() {
       ) : (
         <ExamsTable
           exams={exams}
-          isLoading={isLoading}
+          isLoading={isRefreshing}
           onRefresh={refreshExams}
           onExport={handleExport}
           isExporting={isExporting}
