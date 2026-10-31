@@ -16,7 +16,6 @@ import {
   Activity,
   Stethoscope,
   Save,
-  Download,
   CalendarDays,
   Trash2,
   Pencil,
@@ -695,14 +694,6 @@ export default function DashboardPage() {
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               <span>Consultas y Pagos</span>
             </TabsTrigger>
-
-            <TabsTrigger
-              value="reports"
-              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2.5 px-4 text-xs font-semibold flex items-center space-x-2 cursor-pointer transition"
-            >
-              <Download className="w-4 h-4" />
-              <span>Reportes (Excel / PDF)</span>
-            </TabsTrigger>
           </TabsList>
 
           {/* PESTAÑA 1: RECEPCIÓN DIARIA */}
@@ -1003,6 +994,11 @@ export default function DashboardPage() {
               })}
               </div>
             )}
+
+            {/* Reportes de Turnos Médicos (PDF y Excel) */}
+            <div className="pt-4">
+              <ReportsTab />
+            </div>
           </TabsContent>
 
           {/* PESTAÑA 2: MÉDICOS Y HORARIOS */}
@@ -1190,11 +1186,6 @@ export default function DashboardPage() {
           {/* PESTAÑA 3: CONSULTAS Y PAGOS */}
           <TabsContent value="consultations" className="mt-6">
             <ConsultationsModule />
-          </TabsContent>
-
-          {/* PESTAÑA 4: REPORTES */}
-          <TabsContent value="reports" className="mt-6">
-            <ReportsTab />
           </TabsContent>
         </Tabs>
       </main>

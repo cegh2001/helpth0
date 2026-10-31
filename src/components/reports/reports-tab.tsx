@@ -42,10 +42,13 @@ export function ReportsTab() {
   return (
     <Card className="shadow-xs border-slate-200 bg-white">
       <CardHeader>
-        <CardTitle className="text-base">Exportar Reportes del Consultorio</CardTitle>
+        <CardTitle className="text-base flex items-center gap-2">
+          <FileText className="w-4 h-4 text-blue-600" />
+          <span>Reportes de Turnos Médicos y Pacientes (Excel / PDF)</span>
+        </CardTitle>
         <CardDescription className="text-xs">
-          Generá planillas estructuradas de Excel (.xlsx) y reportes médicos impresos (.pdf) con los
-          turnos y conteo de pacientes.
+          Generá planillas de Excel (.xlsx) y reportes médicos impresos (.pdf) correspondientes al
+          conteo diario de turnos y guardias del consultorio.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
