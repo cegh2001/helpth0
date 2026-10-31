@@ -8,7 +8,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "prisma db push --skip-generate && next build",
     "start": "next start",
     "postinstall": "prisma generate",
     "auth:ensure-secret": "node scripts/ensure-auth-secret.mjs",
