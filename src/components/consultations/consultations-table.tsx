@@ -7,6 +7,7 @@ import {
   ConsultationsFilterBar,
   FilterState,
 } from './consultations-filter-bar';
+import { ExportConsultationsDialog } from './export-consultations-dialog';
 
 export interface ConsultationItem {
   id: string;
@@ -33,8 +34,10 @@ interface Props {
   consultations: ConsultationItem[];
   isLoading: boolean;
   onRefresh: () => void;
-  onExport: (filters: { startDate?: string; endDate?: string; period?: string }) => void;
+  onExport: (filters: { startDate?: string; endDate?: string; period: string }) => void;
   isExporting: boolean;
+  onTriggerUpload: () => void;
+  isPreviewLoading: boolean;
 }
 
 function renderPaymentMethod(item: ConsultationItem) {
@@ -101,37 +104,17 @@ export function ConsultationsTable({
   onRefresh,
   onExport,
   isExporting,
+  onTriggerUpload,
+  isPreviewLoading,
 }: Props) {
-  const availableMonths = useMemo(() => {
-    const monthSet = new Set<string>();
-    consultations.forEach((c) => {
-      if (c.date && c.date.length >= 7) {
-        monthSet.add(c.date.slice(0, 7));
-      }
-    });
-    const months = Array.from(monthSet).sort().reverse();
-    if (months.length === 0) months.push('2026-10');
-
-    const MONTH_NAMES = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-    ];
-
-    return months.map((m) => {
-      const [year, mon] = m.split('-').map(Number);
-      const name = MONTH_NAMES[mon - 1] || m;
-      return { value: m, label: `${name} ${year}` };
-    });
-  }, [consultations]);
-
   const [filter, setFilter] = useState<FilterState>(() => ({
     search: '',
-    mode: 'all',
-    selectedMonth: '2026-10',
     startDate: '',
     endDate: '',
     periodLabel: 'Todo el Histórico',
   }));
+
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return consultations.filter((c) => {
@@ -168,26 +151,31 @@ export function ConsultationsTable({
         ? `Bs ${avgRate.toFixed(2)}`
         : '-';
 
-  const handleExportClick = () => {
-    onExport({
-      startDate: filter.startDate || undefined,
-      endDate: filter.endDate || undefined,
-      period: filter.periodLabel,
-    });
-  };
-
   return (
     <div className="space-y-4">
-      {/* Barra de Filtros Inteligente: Mes, Semanas y Búsqueda */}
+      {/* Barra de Filtros Unificada con DatePickers y Botones de Acción */}
       <ConsultationsFilterBar
         filter={filter}
         onChange={setFilter}
-        availableMonths={availableMonths}
         onRefresh={onRefresh}
-        onExport={handleExportClick}
+        onOpenExportDialog={() => setIsExportDialogOpen(true)}
+        onTriggerUpload={onTriggerUpload}
         isLoading={isLoading}
-        isExporting={isExporting}
+        isPreviewLoading={isPreviewLoading}
         totalFiltered={filtered.length}
+        totalAll={consultations.length}
+      />
+
+      {/* Diálogo Modal para Descargar Excel con Rango y DatePickers */}
+      <ExportConsultationsDialog
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        consultations={consultations}
+        defaultStartDate={filter.startDate}
+        defaultEndDate={filter.endDate}
+        defaultPeriod={filter.periodLabel}
+        onConfirmExport={onExport}
+        isExporting={isExporting}
       />
 
       {/* Métricas Resumidas Reactivas al Filtro */}

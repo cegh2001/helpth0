@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 import { ConsultationsTable, ConsultationItem } from './consultations-table';
 import {
   ConsultationsReviewView,
@@ -215,52 +213,24 @@ export function ConsultationsModule() {
         </div>
       )}
 
-      {/* Zona de Carga de Archivo Excel/CSV */}
-      <Card className="border border-slate-200 shadow-xs bg-white overflow-hidden">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="space-y-1 text-center md:text-left">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center justify-center md:justify-start gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                <span>Cargar Planilla Semanal de Consultas</span>
-              </h3>
-              <p className="text-xs text-slate-500 max-w-xl">
-                Subí el archivo de pagos (.xlsx o .csv). Podrás revisar y validar cada consulta en pantalla completa,
-                con sus tasas BCV y montos exonerados detallados antes de ingresarlos.
-              </p>
-            </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        onChange={handleFileChange}
+        className="hidden"
+        id="excel-file-upload"
+      />
 
-            <div className="flex items-center gap-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileChange}
-                className="hidden"
-                id="excel-file-upload"
-              />
-              <Button
-                asChild
-                disabled={isPreviewLoading}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-xs cursor-pointer rounded-xl font-semibold px-4 h-9"
-              >
-                <label htmlFor="excel-file-upload" className="flex items-center gap-2 cursor-pointer">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>{isPreviewLoading ? 'Analizando archivo...' : 'Seleccionar Archivo Excel'}</span>
-                </label>
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tabla de Consultas */}
+      {/* Tabla de Consultas con Barra de Herramientas Unificada */}
       <ConsultationsTable
         consultations={consultations}
         isLoading={isLoading}
         onRefresh={fetchConsultations}
         onExport={handleExport}
         isExporting={isExporting}
+        onTriggerUpload={() => fileInputRef.current?.click()}
+        isPreviewLoading={isPreviewLoading}
       />
     </div>
   );
