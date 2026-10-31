@@ -65,16 +65,23 @@ function computeExoneration(
   let percent = 0;
   if (match) {
     percent = Math.min(100, Math.max(0, parseInt(match[1], 10)));
+  } else if (upper.includes('MITAD') || upper.includes('MEDIA')) {
+    percent = 50;
   } else {
-    const expectedBs = amountUsd * bcvRate;
-    if (paidBs <= 0 || expectedBs <= 0) {
-      percent = 100;
+    const matchNumber = upper.match(/EXONERAD[AO]S?\s*(?:AL)?\s*(\d{1,3})/);
+    if (matchNumber) {
+      percent = Math.min(100, Math.max(0, parseInt(matchNumber[1], 10)));
     } else {
-      const paidRatio = paidBs / expectedBs;
-      if (paidRatio < 0.95) {
-        percent = Math.round((1 - paidRatio) * 100);
-      } else {
+      const expectedBs = amountUsd * bcvRate;
+      if (paidBs <= 0 || expectedBs <= 0) {
         percent = 100;
+      } else {
+        const paidRatio = paidBs / expectedBs;
+        if (paidRatio < 0.95) {
+          percent = Math.round((1 - paidRatio) * 100);
+        } else {
+          percent = 100;
+        }
       }
     }
   }

@@ -119,6 +119,9 @@ export function ReviewTableRow({ row, index, onChange }: Props) {
           <span className="text-slate-400 text-xs">%</span>
         </div>
       </td>
+      <td className="p-2.5 text-right font-mono font-bold text-purple-700 whitespace-nowrap">
+        {row.exoneratedAmountUsd > 0 ? `$${row.exoneratedAmountUsd.toFixed(2)}` : <span className="text-slate-300">-</span>}
+      </td>
       <td className="p-2.5 whitespace-nowrap">
         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
           {row.status}

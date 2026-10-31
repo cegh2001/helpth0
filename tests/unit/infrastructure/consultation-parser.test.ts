@@ -112,4 +112,75 @@ describe('Consultation Excel/CSV Parser', () => {
     expect(result.consultations[0].amountUsd).toBe(5);
     expect(result.summary.totalParsed).toBe(1);
   });
+
+  it('correctly calculates 100%, partial and percentage exonerations', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Control de Pago');
+    sheet.addRow([
+      '#',
+      'Fecha',
+      'Nombre y Apellido',
+      'Cedula',
+      'Direccion',
+      'Telefono',
+      'Medicos',
+      'Consulta',
+      'Punto',
+      'Pago Movil',
+      'Efectivo',
+      'Tasa BCV',
+      'Divisas',
+      'TOTAL',
+      'Observaciones',
+    ]);
+    sheet.addRow([
+      1,
+      new Date('2026-10-01T00:00:00.000Z'),
+      'PACIENTE EXONERADO COMPLETO',
+      '11111111',
+      'CARABALLEDA',
+      '4121111111',
+      'LIC MARIA JOSE DE SOUSA',
+      'PSICOLOGIA',
+      12902.55,
+      null,
+      null,
+      860.17,
+      15,
+      12902.55,
+      'EXONERADO',
+    ]);
+    sheet.addRow([
+      2,
+      new Date('2026-10-01T00:00:00.000Z'),
+      'PACIENTE EXONERADO MITAD',
+      '22222222',
+      'CARABALLEDA',
+      '4122222222',
+      'LIC MARIA JOSE DE SOUSA',
+      'PSICOLOGIA',
+      6451.28,
+      null,
+      null,
+      860.17,
+      15,
+      6451.28,
+      'EXONERADO 50%',
+    ]);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const result = await parseConsultationsFromBuffer(Buffer.from(buffer));
+
+    expect(result.consultations.length).toBe(2);
+    expect(result.consultations[0].exonerationPercent).toBe(100);
+    expect(result.consultations[0].exoneratedAmountUsd).toBe(15);
+    expect(result.consultations[0].status).toBe('EXONERADO 100%');
+
+    expect(result.consultations[1].exonerationPercent).toBe(50);
+    expect(result.consultations[1].exoneratedAmountUsd).toBe(7.5);
+    expect(result.consultations[1].status).toBe('EXONERADO 50%');
+
+    expect(result.summary.totalExoneratedUsd).toBe(22.5);
+    expect(result.summary.exoneratedPatientsCount).toBe(2);
+  });
 });

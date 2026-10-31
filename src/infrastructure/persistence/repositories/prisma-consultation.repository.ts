@@ -143,24 +143,24 @@ export class PrismaConsultationRepository implements ConsultationRepository {
     });
 
     const existingSet = new Set(existing.map((e) => e.importHash));
-    const toInsert = consultations.filter((c) => !existingSet.has(c.importHash));
-    const skipped = consultations.length - toInsert.length;
 
     // Deduplicate within the current batch in case the file itself has duplicate lines
     const batchSeen = new Set<string>();
-    const uniqueToInsert: Consultation[] = [];
+    const uniqueBatch: Consultation[] = [];
     let intraBatchDuplicates = 0;
 
-    for (const item of toInsert) {
+    for (const item of consultations) {
       if (batchSeen.has(item.importHash)) {
         intraBatchDuplicates++;
       } else {
         batchSeen.add(item.importHash);
-        uniqueToInsert.push(item);
+        uniqueBatch.push(item);
       }
     }
 
-    for (const item of uniqueToInsert) {
+    const newRowsCount = uniqueBatch.filter((c) => !existingSet.has(c.importHash)).length;
+
+    for (const item of uniqueBatch) {
       await this.save(item);
     }
 
@@ -170,8 +170,8 @@ export class PrismaConsultationRepository implements ConsultationRepository {
     });
 
     return {
-      inserted: uniqueToInsert.length,
-      skipped: skipped + intraBatchDuplicates,
+      inserted: newRowsCount,
+      skipped: intraBatchDuplicates,
       items: allSaved,
     };
   }

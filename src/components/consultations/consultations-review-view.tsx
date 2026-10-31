@@ -134,10 +134,14 @@ export function ConsultationsReviewView({
           <Button
             size="sm"
             onClick={() => onConfirm(editableRows)}
-            disabled={computedMetrics.newRowsCount === 0 || isConfirming}
+            disabled={editableRows.length === 0 || isConfirming}
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4"
           >
-            {isConfirming ? 'Guardando en Base de Datos...' : `Confirmar e Importar (${computedMetrics.newRowsCount} nuevas)`}
+            {isConfirming
+              ? 'Guardando en Base de Datos...'
+              : computedMetrics.newRowsCount > 0
+                ? `Confirmar e Importar (${computedMetrics.newRowsCount} nuevas)`
+                : `Actualizar Consultas (${editableRows.length})`}
           </Button>
         </div>
       </div>
@@ -148,7 +152,7 @@ export function ConsultationsReviewView({
       {/* Tabla Ancha con Inputs Editables y Scroll Horizontal */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto max-h-[620px] w-full">
-          <table className="min-w-[1450px] w-full text-left text-xs border-collapse">
+          <table className="min-w-[1550px] w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-600 font-semibold z-10">
               <tr>
                 <th className="p-3 w-12">#</th>
@@ -163,6 +167,7 @@ export function ConsultationsReviewView({
                 <th className="p-3 w-32 text-right">Bs Facturados</th>
                 <th className="p-3 w-24 text-right">Divisas ($)</th>
                 <th className="p-3 w-28 text-center">% Exon.</th>
+                <th className="p-3 w-24 text-right">Exon. ($)</th>
                 <th className="p-3 w-32">Estatus</th>
               </tr>
             </thead>
