@@ -8,6 +8,8 @@ import {
   FilterState,
 } from './consultations-filter-bar';
 import { ExportConsultationsDialog } from './export-consultations-dialog';
+import { DataPagination } from '@/components/ui/data-pagination';
+import { clampPage, DEFAULT_PAGE_SIZE } from '@/components/ui/pagination-range';
 import type { ConsultationItem } from './consultation-item';
 
 interface Props {
@@ -95,6 +97,8 @@ export function ConsultationsTable({
   }));
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = DEFAULT_PAGE_SIZE;
 
   const filtered = useMemo(() => {
     return consultations.filter((c) => {
@@ -112,6 +116,10 @@ export function ConsultationsTable({
       );
     });
   }, [consultations, filter]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = clampPage(currentPage, pageCount);
+  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const totalUsd = filtered.reduce((s, c) => s + c.amountUsd, 0);
   const totalBs = filtered.reduce((s, c) => s + c.totalBs, 0);
@@ -197,7 +205,7 @@ export function ConsultationsTable({
 
       {/* Tabla Principal con Scroll Horizontal */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto max-h-[600px] w-full">
+        <div className="table-scroll overflow-auto max-h-[600px] w-full">
           <table className="min-w-[1350px] w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-600 font-semibold z-10">
               <tr>
@@ -223,9 +231,11 @@ export function ConsultationsTable({
                   </td>
                 </tr>
               ) : (
-                filtered.map((item, index) => (
+                paginated.map((item, index) => (
                   <tr key={item.id} className="hover:bg-slate-50/70 transition">
-                    <td className="p-3 text-slate-400 font-mono">{index + 1}</td>
+                    <td className="p-3 text-slate-400 font-mono">
+                      {(safePage - 1) * pageSize + index + 1}
+                    </td>
                     <td className="p-3 whitespace-nowrap font-medium text-slate-700">{item.date}</td>
                     <td className="p-3 font-semibold text-slate-900">{item.patientName}</td>
                     <td className="p-3 text-slate-600 font-mono">{item.patientCedula || 'Sin Cédula'}</td>
@@ -261,6 +271,15 @@ export function ConsultationsTable({
             </tbody>
           </table>
         </div>
+
+        <DataPagination
+          page={safePage}
+          pageCount={pageCount}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          itemLabel="consultas"
+        />
       </div>
     </div>
   );

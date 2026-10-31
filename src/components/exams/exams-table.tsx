@@ -8,6 +8,8 @@ import {
   ExamFilterState,
 } from './exams-filter-bar';
 import { ExportExamsDialog } from './export-exams-dialog';
+import { DataPagination } from '@/components/ui/data-pagination';
+import { clampPage, DEFAULT_PAGE_SIZE } from '@/components/ui/pagination-range';
 import type { MedicalExamItem } from './medical-exam-item';
 
 interface Props {
@@ -96,7 +98,7 @@ export function ExamsTable({
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 50;
+  const pageSize = DEFAULT_PAGE_SIZE;
 
   const filtered = useMemo(() => {
     return exams.filter((c) => {
@@ -138,11 +140,12 @@ export function ExamsTable({
         ? `Bs ${avgRate.toFixed(2)}`
         : '-';
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = clampPage(currentPage, pageCount);
   const paginatedExams = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
+    const start = (safePage - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
-  }, [filtered, currentPage, pageSize]);
+  }, [filtered, safePage, pageSize]);
 
   return (
     <div className="space-y-4">
@@ -210,7 +213,7 @@ export function ExamsTable({
 
       {/* Tabla Principal con Scroll Horizontal */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto max-h-[600px] w-full">
+        <div className="table-scroll overflow-auto max-h-[600px] w-full">
           <table className="min-w-[1350px] w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-600 font-semibold z-10">
               <tr>
@@ -246,7 +249,7 @@ export function ExamsTable({
                 paginatedExams.map((item, index) => (
                   <tr key={item.id} className="hover:bg-slate-50/70 transition">
                     <td className="p-3 text-slate-400 font-mono">
-                      {(currentPage - 1) * pageSize + index + 1}
+                      {(safePage - 1) * pageSize + index + 1}
                     </td>
                     <td className="p-3 whitespace-nowrap font-medium text-slate-700">
                       {item.date}
@@ -296,29 +299,14 @@ export function ExamsTable({
         </div>
 
         {/* Paginación */}
-        {totalPages > 1 && (
-          <div className="p-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 bg-slate-50/60">
-            <span>
-              Página {currentPage} de {totalPages}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-2.5 py-1 rounded-md border border-slate-200 bg-white disabled:opacity-50 cursor-pointer"
-              >
-                Anterior
-              </button>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-2.5 py-1 rounded-md border border-slate-200 bg-white disabled:opacity-50 cursor-pointer"
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
-        )}
+        <DataPagination
+          page={safePage}
+          pageCount={pageCount}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          itemLabel="exámenes"
+        />
       </div>
     </div>
   );

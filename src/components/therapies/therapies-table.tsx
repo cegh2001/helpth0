@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingUp, HeartHandshake } from 'lucide-react';
 import { TherapiesFilterBar, TherapyFilterState } from './therapies-filter-bar';
 import { ExportTherapiesDialog } from './export-therapies-dialog';
+import { DataPagination } from '@/components/ui/data-pagination';
+import { clampPage, DEFAULT_PAGE_SIZE } from '@/components/ui/pagination-range';
 import type { TherapySessionItem } from './therapy-session-item';
 
 interface Props {
@@ -77,7 +79,7 @@ export function TherapiesTable({
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const pageSize = 50;
+  const pageSize = DEFAULT_PAGE_SIZE;
 
   const latestDate = useMemo(() => {
     if (therapies.length === 0) return undefined;
@@ -127,8 +129,8 @@ export function TherapiesTable({
     };
   }, [filtered]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const safePage = Math.min(currentPage, totalPages);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = clampPage(currentPage, pageCount);
   const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
@@ -196,7 +198,7 @@ export function TherapiesTable({
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto max-h-[600px] w-full">
+        <div className="table-scroll overflow-auto max-h-[600px] w-full">
           <table className="min-w-[1280px] w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-600 font-semibold z-10">
               <tr>
@@ -273,31 +275,14 @@ export function TherapiesTable({
           </table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50/60 text-xs">
-            <span className="text-slate-500">
-              Página {safePage} de {totalPages} · {filtered.length} sesiones
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                disabled={safePage === 1}
-                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-40 cursor-pointer"
-              >
-                Anterior
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                disabled={safePage === totalPages}
-                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-40 cursor-pointer"
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
-        )}
+        <DataPagination
+          page={safePage}
+          pageCount={pageCount}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          itemLabel="sesiones"
+        />
       </div>
     </div>
   );
