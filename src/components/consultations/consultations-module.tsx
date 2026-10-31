@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { resolveExportFileName } from '@/lib/export-file-name';
 import { ConsultationsTable, ConsultationItem } from './consultations-table';
 import {
   ConsultationsReviewView,
@@ -158,15 +159,17 @@ export function ConsultationsModule() {
       const qs = params.toString();
       const res = await fetch(`/api/consultations/export${qs ? `?${qs}` : ''}`);
       if (!res.ok) throw new Error('Error al generar Excel');
+      const fileName = resolveExportFileName(res.headers, {
+        module: 'consultas',
+        startDate: filters?.startDate,
+        endDate: filters?.endDate,
+        extension: 'xlsx',
+      });
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const slug = (filters?.period || 'consultas')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '');
-      a.download = `Consultas_${slug}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

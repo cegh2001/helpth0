@@ -4,6 +4,7 @@ import {
   excelExporter,
 } from '@/infrastructure/container';
 import { formatLocalDate } from '@/lib/date-utils';
+import { buildExportFileName } from '@/lib/export-file-name';
 import { requireApiSession } from '@/lib/auth-guard';
 import { apiErrorResponse } from '@/lib/http-response';
 
@@ -24,12 +25,19 @@ export async function GET(request: NextRequest) {
 
     const buffer = await excelExporter.exportToExcel(reportData);
 
+    const fileName = buildExportFileName({
+      module: 'reporte',
+      startDate,
+      endDate,
+      extension: 'xlsx',
+    });
+
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         'Content-Type':
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="clinic-report-${startDate}-to-${endDate}.xlsx"`,
+        'Content-Disposition': `attachment; filename="${fileName}"`,
       },
     });
   } catch (error: unknown) {
