@@ -6,18 +6,26 @@ import { Activity, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { authClient } from '@/lib/auth-client';
 import { DashboardNav } from './dashboard-nav';
+import { notifyError } from './notify';
+import { SessionExpiryListener } from './session-expiry-listener';
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await authClient.signOut();
-    router.replace('/login');
-    router.refresh();
+    try {
+      const result = await authClient.signOut();
+      if (result?.error) throw new Error('No se pudo cerrar sesión');
+      router.replace('/login');
+      router.refresh();
+    } catch (error) {
+      notifyError(error, 'No se pudo cerrar sesión');
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
+      <SessionExpiryListener />
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">

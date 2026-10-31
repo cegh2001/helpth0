@@ -1,154 +1,90 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { FeedbackBanner } from '@/components/dashboard/feedback-banner';
+import { ImportRowErrors } from '@/components/dashboard/import-row-errors';
+import { describeErrorText, notifyError, notifySuccess } from '@/components/dashboard/notify';
+import { useImportFlow } from '@/components/dashboard/use-import-flow';
+import { requestFile, requestJson } from '@/lib/api-client';
 import { resolveExportFileName } from '@/lib/export-file-name';
-import { ConsultationsTable, ConsultationItem } from './consultations-table';
+import { saveBlob } from '@/lib/save-blob';
+import { ConsultationsTable } from './consultations-table';
+import type { ConsultationItem } from './consultation-item';
 import {
   ConsultationsReviewView,
   PreviewRow,
   PreviewSummary,
 } from './consultations-review-view';
 
+interface ExportFilters {
+  startDate?: string;
+  endDate?: string;
+  period?: string;
+}
+
 export function ConsultationsModule() {
   const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  // File import state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isReviewMode, setIsReviewMode] = useState(false);
-  const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
-  const [previewSummary, setPreviewSummary] = useState<PreviewSummary | null>(null);
-  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const showFeedback = useCallback((type: 'success' | 'error', text: string) => {
-    setFeedback({ type, text });
-    setTimeout(() => setFeedback(null), 5000);
+  const fetchConsultations = useCallback(async () => {
+    try {
+      const payload = await requestJson<{ data?: ConsultationItem[] }>(
+        '/api/consultations',
+        undefined,
+        'Error al obtener consultas'
+      );
+      setConsultations(payload.data ?? []);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(describeErrorText(err, 'Error al obtener consultas'));
+      notifyError(err, 'Error al obtener consultas', { id: 'consultations-load' });
+    }
   }, []);
 
-  const fetchConsultations = useCallback(async () => {
+  const refreshConsultations = useCallback(async () => {
     setIsLoading(true);
-    try {
-      const res = await fetch('/api/consultations');
-      const data = await res.json();
-      if (data.success) {
-        setConsultations(data.data);
-      } else {
-        showFeedback('error', data.error || 'Error al obtener consultas');
-      }
-    } catch {
-      showFeedback('error', 'Error de red al consultar registros');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showFeedback]);
+    await fetchConsultations();
+    setIsLoading(false);
+  }, [fetchConsultations]);
 
   useEffect(() => {
-    let ignore = false;
+    let cancelled = false;
+
     async function loadInitial() {
-      try {
-        const res = await fetch('/api/consultations');
-        const data = await res.json();
-        if (ignore) return;
-        if (data.success) {
-          setConsultations(data.data);
-        } else {
-          showFeedback('error', data.error || 'Error al obtener consultas');
-        }
-      } catch {
-        if (!ignore) showFeedback('error', 'Error de red al consultar registros');
-      } finally {
-        if (!ignore) setIsLoading(false);
-      }
+      await fetchConsultations();
+      if (!cancelled) setIsLoading(false);
     }
 
     void loadInitial();
     return () => {
-      ignore = true;
+      cancelled = true;
     };
-  }, [showFeedback]);
+  }, [fetchConsultations]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const importFlow = useImportFlow<PreviewRow, PreviewSummary>({
+    endpoint: '/api/consultations/import',
+    collectionKey: 'consultations',
+    previewFallback: 'Error al leer el archivo',
+    confirmFallback: 'Error al guardar los datos',
+    describeSuccess: (result) =>
+      `Importación completada: ${result.inserted} nuevas consultas (${result.skippedDuplicates} duplicadas omitidas).`,
+    onImported: () => {
+      void refreshConsultations();
+    },
+  });
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
-    await processFileForPreview(file);
+    await importFlow.preview(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const processFileForPreview = async (file: File) => {
-    setSelectedFile(file);
-    setIsPreviewLoading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/consultations/import?action=preview', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        throw new Error(data.error || 'Error al procesar archivo');
-      }
-
-      setPreviewRows(data.consultations || []);
-      setPreviewSummary(data.summary || null);
-      setIsReviewMode(true);
-    } catch (err) {
-      showFeedback('error', err instanceof Error ? err.message : 'Error al leer el archivo');
-      setSelectedFile(null);
-    } finally {
-      setIsPreviewLoading(false);
-    }
-  };
-
-  const handleConfirmImport = async (editedRows?: PreviewRow[]) => {
-    if (!selectedFile && (!editedRows || editedRows.length === 0)) return;
-    setIsConfirming(true);
-
-    try {
-      const res = editedRows && editedRows.length > 0
-        ? await fetch('/api/consultations/import?action=confirm', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ consultations: editedRows }),
-          })
-        : await fetch('/api/consultations/import?action=confirm', {
-            method: 'POST',
-            body: (() => {
-              const fd = new FormData();
-              if (selectedFile) fd.append('file', selectedFile);
-              return fd;
-            })(),
-          });
-
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        throw new Error(data.error || 'Error al importar consultas');
-      }
-
-      showFeedback(
-        'success',
-        `Importación completada: ${data.inserted} nuevas consultas ingresadas (${data.skippedDuplicates} duplicadas omitidas).`
-      );
-      setIsReviewMode(false);
-      setSelectedFile(null);
-      fetchConsultations();
-    } catch (err) {
-      showFeedback('error', err instanceof Error ? err.message : 'Error al guardar los datos');
-    } finally {
-      setIsConfirming(false);
-    }
-  };
-
-  const handleExport = async (filters?: { startDate?: string; endDate?: string; period?: string }) => {
+  const handleExport = async (filters?: ExportFilters) => {
     setIsExporting(true);
     try {
       const params = new URLSearchParams();
@@ -156,65 +92,42 @@ export function ConsultationsModule() {
       if (filters?.endDate) params.set('endDate', filters.endDate);
       if (filters?.period) params.set('period', filters.period);
 
-      const qs = params.toString();
-      const res = await fetch(`/api/consultations/export${qs ? `?${qs}` : ''}`);
-      if (!res.ok) throw new Error('Error al generar Excel');
-      const fileName = resolveExportFileName(res.headers, {
+      const query = params.toString();
+      const file = await requestFile(
+        `/api/consultations/export${query ? `?${query}` : ''}`,
+        'Error al generar Excel'
+      );
+      const fileName = resolveExportFileName(file.headers, {
         module: 'consultas',
         startDate: filters?.startDate,
         endDate: filters?.endDate,
         extension: 'xlsx',
       });
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      showFeedback('success', `Planilla Excel generada: ${filters?.period || 'Completo'}`);
+
+      saveBlob(file.blob, fileName);
+      notifySuccess(`Planilla Excel generada: ${filters?.period || 'Completo'}`, {
+        id: 'consultations-export',
+      });
     } catch (err) {
-      showFeedback('error', err instanceof Error ? err.message : 'Error al exportar planilla');
+      notifyError(err, 'Error al exportar planilla', { id: 'consultations-export' });
     } finally {
       setIsExporting(false);
     }
   };
 
-  if (isReviewMode) {
-    return (
-      <ConsultationsReviewView
-        fileName={selectedFile?.name || 'Planilla'}
-        rows={previewRows}
-        summary={previewSummary}
-        onCancel={() => setIsReviewMode(false)}
-        onConfirm={handleConfirmImport}
-        isConfirming={isConfirming}
-      />
-    );
-  }
+  const dismissAlert = () => {
+    importFlow.dismissError();
+    setLoadError(null);
+  };
+  const alert = importFlow.error ?? loadError;
 
   return (
     <div className="space-y-6">
-      {/* Alerta de Feedback */}
-      {feedback && (
-        <div
-          role="alert"
-          className={`p-4 rounded-xl flex items-center space-x-3 text-xs font-medium transition ${
-            feedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
-          }`}
-        >
-          {feedback.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          ) : (
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-          )}
-          <span>{feedback.text}</span>
-        </div>
-      )}
+      {/* The alert lives outside the review branch: during review there is no
+          table, and that is exactly where confirm failures used to disappear. */}
+      {alert && <FeedbackBanner message={{ type: 'error', text: alert }} onDismiss={dismissAlert} />}
+
+      <ImportRowErrors errors={importFlow.rowErrors} onDismiss={importFlow.dismissRowErrors} />
 
       <input
         ref={fileInputRef}
@@ -225,16 +138,26 @@ export function ConsultationsModule() {
         id="excel-file-upload"
       />
 
-      {/* Tabla de Consultas con Barra de Herramientas Unificada */}
-      <ConsultationsTable
-        consultations={consultations}
-        isLoading={isLoading}
-        onRefresh={fetchConsultations}
-        onExport={handleExport}
-        isExporting={isExporting}
-        onTriggerUpload={() => fileInputRef.current?.click()}
-        isPreviewLoading={isPreviewLoading}
-      />
+      {importFlow.isReviewMode ? (
+        <ConsultationsReviewView
+          fileName={importFlow.selectedFile?.name || 'Planilla'}
+          rows={importFlow.rows}
+          summary={importFlow.summary}
+          onCancel={importFlow.cancel}
+          onConfirm={importFlow.confirm}
+          isConfirming={importFlow.isConfirming}
+        />
+      ) : (
+        <ConsultationsTable
+          consultations={consultations}
+          isLoading={isLoading}
+          onRefresh={refreshConsultations}
+          onExport={handleExport}
+          isExporting={isExporting}
+          onTriggerUpload={() => fileInputRef.current?.click()}
+          isPreviewLoading={importFlow.isPreviewLoading}
+        />
+      )}
     </div>
   );
 }
