@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ success: true, ...result });
   } catch (error: unknown) {
+    console.error('[consultations.import.POST] error:', error);
     return apiErrorResponse(error, 'consultations.import.POST');
   }
 }

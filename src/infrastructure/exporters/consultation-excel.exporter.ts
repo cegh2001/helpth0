@@ -73,6 +73,18 @@ export class ExcelJsConsultationExporter implements ConsultationExcelExporter {
 
     // 3. Data Rows
     consultations.forEach((c, idx) => {
+      const paidBs = c.amountPointBs + c.amountMobileBs + c.amountCashBs;
+      let effectiveTotalBs = c.totalBs > 0 ? c.totalBs : paidBs;
+      let effectiveUsd = c.amountUsd;
+
+      if (paidBs > 0) {
+        if (effectiveUsd <= 0 && c.bcvRate > 0) {
+          effectiveUsd = Number((paidBs / c.bcvRate).toFixed(2));
+        }
+      } else if (effectiveUsd > 0 && c.bcvRate > 0 && effectiveTotalBs <= 0) {
+        effectiveTotalBs = Number((effectiveUsd * c.bcvRate).toFixed(2));
+      }
+
       const row = sheet.addRow([
         idx + 1,
         c.date,
@@ -86,8 +98,8 @@ export class ExcelJsConsultationExporter implements ConsultationExcelExporter {
         c.amountMobileBs > 0 ? c.amountMobileBs : '',
         c.amountCashBs > 0 ? c.amountCashBs : '',
         c.bcvRate > 0 ? c.bcvRate : '',
-        c.amountUsd > 0 ? c.amountUsd : '',
-        c.totalBs > 0 ? c.totalBs : '',
+        effectiveUsd > 0 ? effectiveUsd : '',
+        effectiveTotalBs > 0 ? effectiveTotalBs : '',
         c.observations ?? c.status,
       ]);
 

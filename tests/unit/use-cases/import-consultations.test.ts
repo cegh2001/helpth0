@@ -54,4 +54,59 @@ describe('ImportConsultationsUseCase', () => {
     expect(consultations[1].doctorId).toBe(doctors[0].id);
     expect(consultations[2].doctorId).toBe(doctors[0].id);
   });
+
+  it('sanitizes input consultations and applies payment calculation rules', async () => {
+    const repository = new InMemoryConsultationRepository();
+    const doctorRepo = new InMemoryDoctorRepository();
+    const parser = new ConsultationCsvParser();
+    const useCase = new ImportConsultationsUseCase(repository, parser, doctorRepo);
+
+    const inputData = [
+      {
+        date: '2026-10-01T00:00:00.000Z', // ISO string
+        patientName: '  PACIENTE BS ONLY  ',
+        doctorName: 'DRA MAILET CONTRERA',
+        specialty: 'TRAUMATOLOGIA',
+        amountPointBs: 4300.85,
+        amountMobileBs: 0,
+        amountCashBs: 0,
+        bcvRate: 860.17,
+        amountUsd: 0, // Should be calculated as 4300.85 / 860.17 = 5
+        totalBs: 0,
+      },
+      {
+        date: '2026-10-02',
+        patientName: 'PACIENTE USD ONLY',
+        doctorName: 'DRA MAILET CONTRERA',
+        specialty: 'TRAUMATOLOGIA',
+        amountPointBs: 0,
+        amountMobileBs: 0,
+        amountCashBs: 0,
+        bcvRate: 860.17,
+        amountUsd: 15,
+        totalBs: 0, // Should be calculated as 15 * 860.17 = 12902.55
+        exonerationPercent: 100,
+      },
+    ];
+
+    const result = await useCase.execute({ consultations: inputData as never });
+    expect(result.inserted).toBe(2);
+
+    const saved = await repository.findMany();
+    expect(saved.length).toBe(2);
+
+    // Row 1: Bs only -> derives USD
+    expect(saved[0].patientName).toBe('PACIENTE BS ONLY');
+    expect(saved[0].date).toBe('2026-10-01');
+    expect(saved[0].amountUsd).toBe(5);
+    expect(saved[0].totalBs).toBe(4300.85);
+
+    // Row 2: USD only -> derives total Bs
+    expect(saved[1].patientName).toBe('PACIENTE USD ONLY');
+    expect(saved[1].totalBs).toBe(12902.55);
+    expect(saved[1].amountUsd).toBe(15);
+    expect(saved[1].exonerationPercent).toBe(100);
+    expect(saved[1].exoneratedAmountUsd).toBe(15);
+    expect(saved[1].status).toBe('EXONERADO 100%');
+  });
 });

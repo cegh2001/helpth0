@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { FileSpreadsheet, ArrowLeft } from 'lucide-react';
+import { FileSpreadsheet, ArrowLeft, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { ReviewMetricsCards } from './review-metrics-cards';
 import { ReviewTableRow } from './review-table-row';
 
@@ -56,23 +57,79 @@ export function ConsultationsReviewView({
   isConfirming,
 }: Props) {
   const [editableRows, setEditableRows] = useState<PreviewRow[]>(() => rows);
+  const [search, setSearch] = useState('');
 
   const handleRowChange = (index: number, field: keyof PreviewRow, value: unknown) => {
     setEditableRows((prev) => {
       const copy = [...prev];
       const item = { ...copy[index], [field]: value };
 
-      if (field === 'exonerationPercent' || field === 'amountUsd' || field === 'bcvRate') {
+      if (
+        field === 'amountPointBs' ||
+        field === 'amountMobileBs' ||
+        field === 'amountCashBs' ||
+        field === 'bcvRate' ||
+        field === 'amountUsd' ||
+        field === 'totalBs' ||
+        field === 'exonerationPercent'
+      ) {
+        const point = Number(item.amountPointBs) || 0;
+        const mobile = Number(item.amountMobileBs) || 0;
+        const cash = Number(item.amountCashBs) || 0;
+        const rate = Number(item.bcvRate) || 0;
+        let usd = Number(item.amountUsd) || 0;
+        let bs = Number(item.totalBs) || 0;
+        const paidBs = point + mobile + cash;
+
+        if (paidBs > 0) {
+          bs = paidBs;
+          if (
+            field !== 'amountUsd' &&
+            (usd <= 0 ||
+              field === 'bcvRate' ||
+              field === 'amountPointBs' ||
+              field === 'amountMobileBs' ||
+              field === 'amountCashBs')
+          ) {
+            if (rate > 0) usd = Number((paidBs / rate).toFixed(2));
+          }
+        } else if (usd > 0 && rate > 0) {
+          if (field === 'amountUsd' || field === 'bcvRate' || bs <= 0) {
+            bs = Number((usd * rate).toFixed(2));
+          }
+        }
+
+        item.totalBs = bs;
+        item.amountUsd = usd;
+
         const percent = Math.min(100, Math.max(0, Number(item.exonerationPercent) || 0));
         item.exonerationPercent = percent;
-        item.exoneratedAmountUsd = Number(((item.amountUsd * percent) / 100).toFixed(2));
-        item.status = percent === 100 ? 'EXONERADO 100%' : percent > 0 ? `EXONERADO ${percent}%` : 'COMPLETO';
+        item.exoneratedAmountUsd = Number(((usd * percent) / 100).toFixed(2));
+        item.status =
+          percent === 100 ? 'EXONERADO 100%' : percent > 0 ? `EXONERADO ${percent}%` : 'COMPLETO';
       }
 
       copy[index] = item;
       return copy;
     });
   };
+
+  const filteredRows = useMemo(() => {
+    if (!search.trim()) {
+      return editableRows.map((row, index) => ({ row, index }));
+    }
+    const q = search.toLowerCase().trim();
+    return editableRows
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) =>
+        row.patientName.toLowerCase().includes(q) ||
+        (row.patientCedula && row.patientCedula.toLowerCase().includes(q)) ||
+        row.doctorName.toLowerCase().includes(q) ||
+        row.specialty.toLowerCase().includes(q) ||
+        row.status.toLowerCase().includes(q) ||
+        row.date.includes(q)
+      );
+  }, [editableRows, search]);
 
   const computedMetrics = useMemo(() => {
     const totalParsed = editableRows.length;
@@ -149,6 +206,22 @@ export function ConsultationsReviewView({
       {/* Tarjetas KPI Reactivas */}
       <ReviewMetricsCards metrics={computedMetrics} />
 
+      {/* Barra de Búsqueda Rápida en Revisión */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Input
+            placeholder="Buscar por paciente, cédula, médico, especialidad o estatus..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-8 text-xs bg-slate-50 border-slate-200"
+          />
+        </div>
+        <span className="text-xs text-slate-500 font-medium">
+          Mostrando {filteredRows.length} de {editableRows.length} consultas
+        </span>
+      </div>
+
       {/* Tabla Ancha con Inputs Editables y Scroll Horizontal */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto max-h-[620px] w-full">
@@ -172,9 +245,17 @@ export function ConsultationsReviewView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {editableRows.map((row, idx) => (
-                <ReviewTableRow key={idx} row={row} index={idx} onChange={handleRowChange} />
-              ))}
+              {filteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={14} className="p-8 text-center text-slate-400">
+                    No se encontraron consultas que coincidan con la búsqueda.
+                  </td>
+                </tr>
+              ) : (
+                filteredRows.map(({ row, index }) => (
+                  <ReviewTableRow key={index} row={row} index={index} onChange={handleRowChange} />
+                ))
+              )}
             </tbody>
           </table>
         </div>
