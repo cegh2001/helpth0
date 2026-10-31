@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
-import { TherapySessionItem } from './therapies-table';
+import type { TherapySessionItem } from './therapy-session-item';
 
 interface Props {
   open: boolean;

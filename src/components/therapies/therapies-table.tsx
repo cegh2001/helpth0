@@ -5,25 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingUp, HeartHandshake } from 'lucide-react';
 import { TherapiesFilterBar, TherapyFilterState } from './therapies-filter-bar';
 import { ExportTherapiesDialog } from './export-therapies-dialog';
-
-export interface TherapySessionItem {
-  id: string;
-  date: string;
-  therapistName: string;
-  specialty: string;
-  dayOfWeekName: string;
-  sessionIndex: number;
-  amountPointBs: number;
-  amountMobileBs: number;
-  amountCashBs: number;
-  bcvRate: number;
-  amountUsd: number;
-  totalBs: number;
-  status: string;
-  exonerationPercent: number;
-  exoneratedAmountUsd: number;
-  observations: string | null;
-}
+import type { TherapySessionItem } from './therapy-session-item';
 
 interface Props {
   therapies: TherapySessionItem[];

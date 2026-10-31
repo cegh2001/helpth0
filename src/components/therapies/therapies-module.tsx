@@ -1,16 +1,24 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 import { resolveExportFileName } from '@/lib/export-file-name';
-import { TherapiesTable, TherapySessionItem } from './therapies-table';
-import { TherapiesReviewView, TherapyPreviewRow, TherapyPreviewSummary } from './therapies-review-view';
+import { TherapiesTable } from './therapies-table';
+import type { TherapySessionItem } from './therapy-session-item';
+import {
+  TherapiesReviewView,
+  TherapyPreviewRow,
+  TherapyPreviewSummary,
+} from './therapies-review-view';
 
-export function TherapiesModule() {
-  const [therapies, setTherapies] = useState<TherapySessionItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function TherapiesModule({ therapies }: { therapies: TherapySessionItem[] }) {
+  const router = useRouter();
+  const [isRefreshing, startTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    null
+  );
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isReviewMode, setIsReviewMode] = useState(false);
@@ -21,53 +29,16 @@ export function TherapiesModule() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const showFeedback = useCallback((type: 'success' | 'error', text: string) => {
+  const showFeedback = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text });
     setTimeout(() => setFeedback(null), 6000);
-  }, []);
+  };
 
-  const fetchTherapies = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/therapies');
-      const data = await res.json();
-      if (data.success) {
-        setTherapies(data.data);
-      } else {
-        showFeedback('error', data.error || 'Error al obtener terapias');
-      }
-    } catch {
-      showFeedback('error', 'Error de red al consultar terapias');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showFeedback]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadInitial() {
-      try {
-        const res = await fetch('/api/therapies');
-        const data = await res.json();
-        if (ignore) return;
-        if (data.success) {
-          setTherapies(data.data);
-        } else {
-          showFeedback('error', data.error || 'Error al obtener terapias');
-        }
-      } catch {
-        if (!ignore) showFeedback('error', 'Error de red al consultar terapias');
-      } finally {
-        if (!ignore) setIsLoading(false);
-      }
-    }
-
-    void loadInitial();
-    return () => {
-      ignore = true;
-    };
-  }, [showFeedback]);
+  // The list is read on the server: refreshing means asking the route for a new
+  // render, not refetching it in the browser.
+  const refresh = () => {
+    startTransition(() => router.refresh());
+  };
 
   const processFileForPreview = async (file: File) => {
     setSelectedFile(file);
@@ -137,7 +108,7 @@ export function TherapiesModule() {
       );
       setIsReviewMode(false);
       setSelectedFile(null);
-      fetchTherapies();
+      refresh();
     } catch (err) {
       showFeedback('error', err instanceof Error ? err.message : 'Error al guardar los datos');
     } finally {
@@ -228,8 +199,8 @@ export function TherapiesModule() {
 
       <TherapiesTable
         therapies={therapies}
-        isLoading={isLoading}
-        onRefresh={fetchTherapies}
+        isLoading={isRefreshing}
+        onRefresh={refresh}
         onExport={handleExport}
         isExporting={isExporting}
         onTriggerUpload={() => fileInputRef.current?.click()}
