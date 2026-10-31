@@ -44,6 +44,9 @@ dev.db-journal
 # vercel
 .vercel
 
+# agent tools / local registries
+.atl/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
