@@ -14,6 +14,7 @@ import { ExcelJsTherapyExporter } from './exporters/therapy-excel.exporter';
 import { ConsultationCsvParser } from './parsers/consultation-excel.parser';
 import { MedicalExamExcelParser } from './parsers/medical-exam-excel.parser';
 import { TherapyExcelParser } from './parsers/therapy-excel.parser';
+import { WorkbookModuleGuard } from './parsers/workbook-module-guard';
 
 import { RegisterDoctorUseCase } from '@/core/application/use-cases/doctor/register-doctor.use-case';
 import { UpdateDoctorUseCase } from '@/core/application/use-cases/doctor/update-doctor.use-case';
@@ -53,6 +54,7 @@ export const therapyExcelExporter = new ExcelJsTherapyExporter();
 export const consultationParser = new ConsultationCsvParser();
 export const medicalExamParser = new MedicalExamExcelParser();
 export const therapyParser = new TherapyExcelParser();
+export const workbookModuleGuard = new WorkbookModuleGuard();
 
 // Application Use Cases
 export const registerDoctorUseCase = new RegisterDoctorUseCase(doctorRepository);

@@ -3,6 +3,7 @@ import {
   medicalExamRepository,
   medicalExamParser,
   importMedicalExamsUseCase,
+  workbookModuleGuard,
 } from '@/infrastructure/container';
 import { requireApiSession } from '@/lib/auth-guard';
 import { apiErrorResponse } from '@/lib/http-response';
@@ -48,6 +49,13 @@ export async function POST(request: NextRequest) {
         csvContent = body.csvContent;
       } else {
         return NextResponse.json({ error: 'Contenido CSV o exámenes requerido' }, { status: 400 });
+      }
+    }
+
+    if (fileBuffer) {
+      const rejection = await workbookModuleGuard.detectWrongModule(fileBuffer, 'examenes');
+      if (rejection) {
+        return NextResponse.json({ error: rejection.message }, { status: 422 });
       }
     }
 
