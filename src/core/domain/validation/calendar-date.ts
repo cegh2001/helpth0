@@ -16,6 +16,20 @@ export function getCalendarDayOfWeek(value: string): number {
   return new Date(`${value}T00:00:00.000Z`).getUTCDay();
 }
 
+const DAY_NAMES = [
+  'DOMINGO',
+  'LUNES',
+  'MARTES',
+  'MIERCOLES',
+  'JUEVES',
+  'VIERNES',
+  'SABADO',
+] as const;
+
+export function getCalendarDayName(value: string): string {
+  return DAY_NAMES[getCalendarDayOfWeek(value)];
+}
+
 export function assertValidCalendarDateRange(startDate: string, endDate: string): void {
   assertValidCalendarDate(startDate);
   assertValidCalendarDate(endDate);

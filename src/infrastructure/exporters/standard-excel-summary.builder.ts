@@ -23,8 +23,10 @@ export function appendStandardExcelSummary(
   sheet: ExcelJS.Worksheet,
   items: SummaryRowItem[],
   moduleTitle: string,
-  titlePeriod: string
+  titlePeriod: string,
+  subjectLabel = 'Pacientes'
 ): void {
+  const subjectPlural = subjectLabel.trim() || 'Pacientes';
   sheet.addRow([]); // Blank line
 
   // 1. Weekly breakdown matrix
@@ -37,7 +39,7 @@ export function appendStandardExcelSummary(
   const weeklyCols = sheet.addRow([
     '',
     'Semana',
-    'Pacientes Atendidos',
+    `${subjectPlural} Atendidos`,
     'Total Divisas ($)',
     'Cobrado Punto (Bs)',
     'Cobrado Pago Móvil (Bs)',
@@ -141,7 +143,7 @@ export function appendStandardExcelSummary(
   const statusCols = sheet.addRow([
     '',
     'Condición / Observación',
-    'Cantidad de Pacientes',
+    `Cantidad de ${subjectPlural}`,
     'Monto en Divisas ($)',
     'Total Equivalente (Bs)',
     '% de Casos',
@@ -184,7 +186,7 @@ export function appendStandardExcelSummary(
 
   const statusTotalRow = sheet.addRow([
     '',
-    'TOTAL PACIENTES',
+    `TOTAL ${subjectPlural.toUpperCase()}`,
     totalPatients,
     totalUsd,
     totalFacturadoBs,

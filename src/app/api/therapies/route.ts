@@ -1,0 +1,32 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getTherapiesUseCase } from '@/infrastructure/container';
+import { requireApiSession } from '@/lib/auth-guard';
+import { apiErrorResponse } from '@/lib/http-response';
+
+export async function GET(request: NextRequest) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('endDate') || undefined;
+    const therapistName = searchParams.get('therapistName') || undefined;
+    const specialty = searchParams.get('specialty') || undefined;
+    const status = searchParams.get('status') || undefined;
+    const searchQuery = searchParams.get('search') || undefined;
+
+    const therapies = await getTherapiesUseCase.execute({
+      startDate,
+      endDate,
+      therapistName,
+      specialty,
+      status,
+      searchQuery,
+    });
+
+    return NextResponse.json({ success: true, data: therapies });
+  } catch (error: unknown) {
+    return apiErrorResponse(error, 'therapies.GET');
+  }
+}

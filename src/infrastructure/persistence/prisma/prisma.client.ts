@@ -1,6 +1,7 @@
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '@/generated/prisma/client';
 import { getPrismaDatabaseUrl } from '../../../../prisma/database-url';
+import { isPrismaClientCurrent } from './prisma-client-guard';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -17,7 +18,7 @@ function createPrismaClient(): PrismaClient {
 }
 
 export const prisma =
-  globalForPrisma.prisma && 'medicalExam' in globalForPrisma.prisma
+  globalForPrisma.prisma && isPrismaClientCurrent(globalForPrisma.prisma)
     ? globalForPrisma.prisma
     : (globalForPrisma.prisma = createPrismaClient());
 

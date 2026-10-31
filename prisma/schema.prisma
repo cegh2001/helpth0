@@ -206,3 +206,33 @@ model MedicalExam {
   @@index([status])
 }
 
+model TherapySession {
+  id             String   @id @default(cuid())
+  date           String   // Format: "YYYY-MM-DD"
+  therapistName  String
+  specialty      String
+  dayOfWeekName  String   // Always derived from `date`, never trusted from the workbook
+  sessionIndex   Int      // 1..N positional index of the session inside its therapist/day block
+
+  amountPointBs  Float    @default(0) // Punto
+  amountMobileBs Float    @default(0) // Pago Movil
+  amountCashBs   Float    @default(0) // Efectivo Bs
+  bcvRate        Float    @default(0) // Tasa BCV
+  amountUsd      Float    @default(0) // Divisas ($)
+  totalBs        Float    @default(0) // Total facturado en Bs
+
+  status              String   @default("COMPLETO") // COMPLETO, EXONERADO 100%, PENDIENTE DE PAGO, etc.
+  exonerationPercent  Float    @default(0)
+  exoneratedAmountUsd Float    @default(0)
+  observations        String?
+
+  importHash     String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([date])
+  @@index([therapistName])
+  @@index([specialty])
+  @@index([status])
+}
+
