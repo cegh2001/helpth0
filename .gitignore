@@ -46,6 +46,9 @@ dev.db-journal
 
 # agent tools / local registries
 .atl/
+.tokensave/
+.engram/
+.vscode/mcp.json
 
 # typescript
 *.tsbuildinfo
