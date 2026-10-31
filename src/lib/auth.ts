@@ -11,6 +11,13 @@ import {
 function getAuthSecret(): string {
   const secret = process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET;
   if (!secret || secret.length < 32) {
+    if (
+      process.env.NEXT_PHASE === 'phase-production-build' ||
+      process.env.npm_lifecycle_event === 'build' ||
+      process.env.CI
+    ) {
+      return 'build_phase_temporary_dummy_secret_min_32_characters_long';
+    }
     throw new Error('BETTER_AUTH_SECRET or AUTH_SECRET must contain at least 32 characters');
   }
   return secret;
