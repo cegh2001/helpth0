@@ -6,7 +6,6 @@ import {
   Users,
   Clock,
   FileSpreadsheet,
-  FileText,
   UserPlus,
   ChevronLeft,
   ChevronRight,
@@ -68,6 +67,8 @@ import {
   getCurrentTimeString,
 } from '@/lib/date-utils';
 import { authClient } from '@/lib/auth-client';
+import { ReportsTab } from '@/components/reports/reports-tab';
+import { ConsultationsModule } from '@/components/consultations/consultations-module';
 
 interface ScheduleItem {
   startTime: string;
@@ -162,16 +163,6 @@ export default function DashboardPage() {
   const [doctorSchedules, setDoctorSchedules] = useState<DoctorScheduleSetting[]>([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
   const [isSavingSchedules, setIsSavingSchedules] = useState(false);
-
-  // Filtros de reportes
-  const [reportStartDate, setReportStartDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(1);
-    return formatLocalDate(d);
-  });
-  const [reportEndDate, setReportEndDate] = useState<string>(() => {
-    return formatLocalDate();
-  });
 
   const showFeedback = useCallback((type: 'success' | 'error', text: string) => {
     setFeedbackMessage({ type, text });
@@ -527,28 +518,6 @@ export default function DashboardPage() {
     setDoctorSchedules(updated);
   };
 
-  // Rango de fechas predefinidos
-  const setRangeToday = () => {
-    const today = formatLocalDate();
-    setReportStartDate(today);
-    setReportEndDate(today);
-  };
-
-  const setRangeLast7Days = () => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - 6);
-    setReportStartDate(formatLocalDate(start));
-    setReportEndDate(formatLocalDate(end));
-  };
-
-  const setRangeThisMonth = () => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    setReportStartDate(formatLocalDate(start));
-    setReportEndDate(formatLocalDate(now));
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Barra de Navegación Superior */}
@@ -717,6 +686,14 @@ export default function DashboardPage() {
             >
               <Stethoscope className="w-4 h-4" />
               <span>Médicos y Horarios</span>
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="consultations"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-xs rounded-lg py-2.5 px-4 text-xs font-semibold flex items-center space-x-2 cursor-pointer transition"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>Consultas y Pagos</span>
             </TabsTrigger>
 
             <TabsTrigger
@@ -1210,98 +1187,14 @@ export default function DashboardPage() {
             </div>
           </TabsContent>
 
-          {/* PESTAÑA 3: REPORTES */}
+          {/* PESTAÑA 3: CONSULTAS Y PAGOS */}
+          <TabsContent value="consultations" className="mt-6">
+            <ConsultationsModule />
+          </TabsContent>
+
+          {/* PESTAÑA 4: REPORTES */}
           <TabsContent value="reports" className="mt-6">
-            <Card className="shadow-xs border-slate-200 bg-white">
-              <CardHeader>
-                <CardTitle className="text-base">Exportar Reportes del Consultorio</CardTitle>
-                <CardDescription className="text-xs">
-                  Generá planillas estructuradas de Excel (.xlsx) y reportes médicos impresos (.pdf) con los turnos y conteo de pacientes.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Rango de Fechas con shadcn DatePicker */}
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Label className="text-xs font-semibold text-slate-600">Desde:</Label>
-                    <DatePicker
-                      value={reportStartDate}
-                      onChange={setReportStartDate}
-                      ariaLabel="Seleccionar fecha inicial del reporte"
-                      className="w-50"
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Label className="text-xs font-semibold text-slate-600">Hasta:</Label>
-                    <DatePicker
-                      value={reportEndDate}
-                      onChange={setReportEndDate}
-                      ariaLabel="Seleccionar fecha final del reporte"
-                      className="w-50"
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={setRangeToday}
-                      className="text-xs h-9 rounded-xl cursor-pointer hover:bg-slate-100 shadow-2xs"
-                    >
-                      Hoy
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={setRangeLast7Days}
-                      className="text-xs h-9 rounded-xl cursor-pointer hover:bg-slate-100 shadow-2xs"
-                    >
-                      Últimos 7 Días
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={setRangeThisMonth}
-                      className="text-xs h-9 rounded-xl cursor-pointer hover:bg-slate-100 shadow-2xs"
-                    >
-                      Este Mes
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Botones de Descarga con Button asChild */}
-                <div className="pt-2 flex flex-wrap gap-4">
-                  <Button
-                    asChild
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs cursor-pointer transition font-semibold h-10 px-5"
-                  >
-                    <a
-                      href={`/api/reports/excel?startDate=${reportStartDate}&endDate=${reportEndDate}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <FileSpreadsheet className="w-4 h-4 mr-2" />
-                      Descargar Excel (.xlsx)
-                    </a>
-                  </Button>
-
-                  <Button
-                    asChild
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-xs cursor-pointer transition font-semibold h-10 px-5"
-                  >
-                    <a
-                      href={`/api/reports/pdf?startDate=${reportStartDate}&endDate=${reportEndDate}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      Descargar PDF (.pdf)
-                    </a>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <ReportsTab />
           </TabsContent>
         </Tabs>
       </main>

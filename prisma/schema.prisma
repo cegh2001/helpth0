@@ -116,3 +116,52 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+model Patient {
+  id            String         @id @default(cuid())
+  cedula        String?        @unique
+  fullName      String
+  birthDate     String?
+  phone         String?
+  address       String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  consultations Consultation[]
+
+  @@index([cedula])
+  @@index([fullName])
+}
+
+model Consultation {
+  id             String   @id @default(cuid())
+  date           String   // Format: "YYYY-MM-DD"
+  patientId      String?
+  patient        Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  patientName    String
+  patientCedula  String?
+  patientPhone   String?
+  patientAddress String?
+
+  doctorName     String
+  specialty      String
+
+  amountPointBs  Float    @default(0) // Punto
+  amountMobileBs Float    @default(0) // Pago Movil
+  amountCashBs   Float    @default(0) // Efectivo Bs
+  bcvRate        Float    @default(0) // Tasa BCV
+  amountUsd      Float    @default(0) // Divisas ($)
+  totalBs        Float    @default(0) // Total en Bs
+
+  status         String   @default("COMPLETO") // COMPLETO, EXONERADO, PENDIENTE DE PAGO, etc.
+  observations   String?
+
+  importHash     String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([date])
+  @@index([doctorName])
+  @@index([specialty])
+  @@index([status])
+}
+
