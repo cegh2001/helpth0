@@ -4,7 +4,7 @@ import { ExcelJsMedicalExamExporter } from '@/infrastructure/exporters/medical-e
 import { MedicalExam } from '@/core/domain/entities/medical-exam.entity';
 
 describe('ExcelJsMedicalExamExporter', () => {
-  it('generates an enriched Excel buffer with detailed rows and automated consolidated summaries', async () => {
+  it('generates an enriched Excel buffer with detailed rows, automated consolidated summaries, and exoneration totals', async () => {
     const exporter = new ExcelJsMedicalExamExporter();
     const exams = [
       MedicalExam.create({
@@ -20,6 +20,8 @@ describe('ExcelJsMedicalExamExporter', () => {
         amountUsd: 86.5,
         status: 'EXONERADO 50%',
         observations: 'EXONERADO 50%',
+        exonerationPercent: 50,
+        exoneratedAmountUsd: 43.25,
       }),
       MedicalExam.create({
         date: '2026-09-29',
@@ -42,7 +44,18 @@ describe('ExcelJsMedicalExamExporter', () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
     const sheet = workbook.getWorksheet('Control de Exámenes');
-    expect(sheet).not.toBeUndefined();
-    expect(sheet!.rowCount).toBeGreaterThan(10);
+    expect(sheet?.rowCount).toBeGreaterThan(10);
+
+    const cellValues: string[] = [];
+    sheet?.eachRow((row) => {
+      (row.values as unknown[]).forEach((val) => {
+        if (typeof val === 'string') cellValues.push(val);
+      });
+    });
+
+    expect(cellValues).toContain('CÁLCULO DE EXONERADOS Y TOTALES (COMPROMISO CONGREGACIÓN)');
+    expect(cellValues).toContain('TOTAL A PAGAR POR LA CONGREGACIÓN');
+    expect(cellValues).toContain('CONSOLIDADO GENERAL: INGRESOS DIRECTOS VS. APORTE CONGREGACIÓN');
+    expect(cellValues).toContain('Exonerado 50%');
   });
 });

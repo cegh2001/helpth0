@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import ExcelJS from 'exceljs';
 import { ExcelJsConsultationExporter } from '@/infrastructure/exporters/consultation-excel.exporter';
 import { Consultation } from '@/core/domain/entities/consultation.entity';
 
 describe('ExcelJsConsultationExporter', () => {
-  it('generates an enriched Excel buffer with detailed rows and automated consolidated summaries', async () => {
+  it('generates an enriched Excel buffer with detailed rows, automated consolidated summaries, and exoneration calculations', async () => {
     const exporter = new ExcelJsConsultationExporter();
     const consultations = [
       Consultation.create({
@@ -40,15 +41,33 @@ describe('ExcelJsConsultationExporter', () => {
         patientPhone: '4125999541',
         doctorName: 'Lic Maria Jose De Sousa',
         specialty: 'Psicologia',
-        amountPointBs: 13186.8,
+        amountPointBs: 0,
         bcvRate: 879.12,
         amountUsd: 15,
-        status: 'EXONERADO',
+        status: 'EXONERADO 100%',
+        exonerationPercent: 100,
+        exoneratedAmountUsd: 15,
       }),
     ];
 
     const buffer = await exporter.exportToExcel(consultations, 'OCTUBRE 2026');
 
     expect(buffer.length).toBeGreaterThan(1500);
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+    const sheet = workbook.getWorksheet('Consultas y Pagos');
+
+    const cellValues: string[] = [];
+    sheet?.eachRow((row) => {
+      (row.values as unknown[]).forEach((val) => {
+        if (typeof val === 'string') cellValues.push(val);
+      });
+    });
+
+    expect(cellValues).toContain('CÁLCULO DE EXONERADOS Y TOTALES (COMPROMISO CONGREGACIÓN)');
+    expect(cellValues).toContain('TOTAL A PAGAR POR LA CONGREGACIÓN');
+    expect(cellValues).toContain('CONSOLIDADO GENERAL: INGRESOS DIRECTOS VS. APORTE CONGREGACIÓN');
+    expect(cellValues).toContain('Exonerado 100%');
   });
 });

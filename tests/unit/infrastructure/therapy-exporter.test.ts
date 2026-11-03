@@ -66,6 +66,42 @@ describe('ExcelJsTherapyExporter', () => {
     expect(values).not.toContain('TOTAL PACIENTES');
   });
 
+  it('renders the exoneration calculation section with sessions terminology', async () => {
+    const sessions = [
+      TherapySession.create({
+        date: '2026-09-10',
+        therapistName: 'LIC JOHANNA RAMETA',
+        specialty: 'TERAPIA OCUPACIONAL',
+        sessionIndex: 1,
+        bcvRate: 820.1,
+        amountUsd: 15,
+        status: 'EXONERADO 100%',
+        exonerationPercent: 100,
+        exoneratedAmountUsd: 15,
+      }),
+      TherapySession.create({
+        date: '2026-09-10',
+        therapistName: 'TSU CATHERIN CAMARA',
+        specialty: 'FISIOTERAPEUTA',
+        sessionIndex: 1,
+        bcvRate: 820.1,
+        amountUsd: 15,
+        observations: 'COMPLETO',
+      }),
+    ];
+
+    const values = await flattenSheetValues(
+      await new ExcelJsTherapyExporter().exportToExcel(sessions, 'SEPTIEMBRE 2026')
+    );
+
+    expect(values).toContain('CÁLCULO DE EXONERADOS Y TOTALES (COMPROMISO CONGREGACIÓN)');
+    expect(values).toContain('TOTAL A PAGAR POR LA CONGREGACIÓN');
+    expect(values).toContain('Sesiones Exonerados');
+    expect(values).toContain('Exonerado 100%');
+    expect(values).not.toContain('Pacientes Atendidos');
+    expect(values).not.toContain('TOTAL PACIENTES');
+  });
+
   it('round-trips through its own parser without creating duplicate identities', async () => {
     const sessions = buildSessions();
     const buffer = await new ExcelJsTherapyExporter().exportToExcel(sessions, 'SEPTIEMBRE 2026');

@@ -1,15 +1,10 @@
 import ExcelJS from 'exceljs';
+import {
+  appendExonerationExcelSummary,
+  ExonerationRowItem,
+} from './exoneration-excel-summary.builder';
 
-export interface SummaryRowItem {
-  date: string;
-  amountPointBs: number;
-  amountMobileBs: number;
-  amountCashBs: number;
-  amountUsd: number;
-  totalBs: number;
-  status: string;
-  observations?: string | null;
-}
+export type SummaryRowItem = ExonerationRowItem;
 
 export function getWeekBucket(dateStr: string): string {
   const day = parseInt(dateStr.slice(8, 10), 10);
@@ -203,5 +198,10 @@ export function appendStandardExcelSummary(
     if (typeof cell.value === 'number') {
       cell.numFmt = '#,##0.00';
     }
+  });
+
+  appendExonerationExcelSummary(sheet, items, subjectPlural, {
+    totalCount: totalPatients,
+    totalFacturadoBs,
   });
 }
