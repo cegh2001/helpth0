@@ -46,6 +46,11 @@ describe('ExcelJsMedicalExamExporter', () => {
     const sheet = workbook.getWorksheet('Control de Exámenes');
     expect(sheet?.rowCount).toBeGreaterThan(10);
 
+    expect(sheet?.getRow(2).getCell(2).value).toBe('28/09/2026');
+    expect(sheet?.getRow(2).getCell(5).value).toBe('28/03/1973');
+    expect(sheet?.getRow(3).getCell(2).value).toBe('29/09/2026');
+    expect(sheet?.getRow(3).getCell(5).value).toBe('24/04/2010');
+
     const cellValues: string[] = [];
     sheet?.eachRow((row) => {
       (row.values as unknown[]).forEach((val) => {

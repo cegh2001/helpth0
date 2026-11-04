@@ -10,6 +10,7 @@ import {
 import { ExportExamsDialog } from './export-exams-dialog';
 import { DataPagination } from '@/components/ui/data-pagination';
 import { clampPage, DEFAULT_PAGE_SIZE } from '@/components/ui/pagination-range';
+import { formatDisplayDate } from '@/lib/date-utils';
 import type { MedicalExamItem } from './medical-exam-item';
 
 interface Props {
@@ -112,8 +113,9 @@ export function ExamsTable({
         const matchesExam = c.examName ? c.examName.toLowerCase().includes(q) : false;
         const matchesObs = c.observations ? c.observations.toLowerCase().includes(q) : false;
         const matchesStatus = c.status.toLowerCase().includes(q);
+        const matchesDate = c.date.includes(q) || formatDisplayDate(c.date).includes(q);
 
-        if (!matchesName && !matchesCedula && !matchesExam && !matchesObs && !matchesStatus) {
+        if (!matchesName && !matchesCedula && !matchesExam && !matchesObs && !matchesStatus && !matchesDate) {
           return false;
         }
       }
@@ -252,14 +254,14 @@ export function ExamsTable({
                       {(safePage - 1) * pageSize + index + 1}
                     </td>
                     <td className="p-3 whitespace-nowrap font-medium text-slate-700">
-                      {item.date}
+                      {formatDisplayDate(item.date)}
                     </td>
                     <td className="p-3 font-semibold text-slate-900">{item.patientName}</td>
                     <td className="p-3 font-mono text-slate-600">
                       {item.patientCedula ? `V-${item.patientCedula}` : '-'}
                     </td>
                     <td className="p-3 font-mono text-slate-600">
-                      {item.patientBirthDate || '-'}
+                      {formatDisplayDate(item.patientBirthDate) || item.patientBirthDate || '-'}
                     </td>
                     <td className="p-3 text-slate-600">{item.patientPhone || '-'}</td>
                     <td className="p-3 text-slate-700 font-medium">

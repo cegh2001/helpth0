@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ReviewMetricsCards } from './review-metrics-cards';
 import { ReviewTableRow } from './review-table-row';
+import { formatDisplayDate } from '@/lib/date-utils';
 
 export interface PreviewRow {
   date: string;
@@ -127,7 +128,8 @@ export function ConsultationsReviewView({
         row.doctorName.toLowerCase().includes(q) ||
         row.specialty.toLowerCase().includes(q) ||
         row.status.toLowerCase().includes(q) ||
-        row.date.includes(q)
+        row.date.includes(q) ||
+        formatDisplayDate(row.date).includes(q)
       );
   }, [editableRows, search]);
 

@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { TherapySession } from '@/core/domain/entities/therapy-session.entity';
 import { TherapyExporterPort } from '@/core/application/ports/therapy-exporter.port';
 import { appendStandardExcelSummary } from './standard-excel-summary.builder';
+import { formatDisplayDate } from '@/lib/date-utils';
 
 export { type TherapyExporterPort };
 export type TherapyExcelExporter = TherapyExporterPort;
@@ -135,7 +136,7 @@ export class ExcelJsTherapyExporter implements TherapyExcelExporter {
     sessions.forEach((session) => {
       const row = sheet.addRow([
         session.sessionIndex,
-        session.date,
+        formatDisplayDate(session.date),
         session.therapistName,
         session.specialty,
         session.dayOfWeekName,

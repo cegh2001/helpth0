@@ -5,6 +5,8 @@ import {
   addDaysToDateString,
   isTimeWithinRange,
   getDoctorDutyStatus,
+  formatDisplayDate,
+  normalizeToIsoDate,
 } from '@/lib/date-utils';
 
 describe('Date Utilities (Local Timezone Safe)', () => {
@@ -61,6 +63,35 @@ describe('Date Utilities (Local Timezone Safe)', () => {
 
       // Not today: upcoming
       expect(getDoctorDutyStatus(katerinSchedule, false, '11:26')).toBe('upcoming');
+    });
+  });
+
+  describe('Display and ISO Date Formatting', () => {
+    it('formats ISO calendar date YYYY-MM-DD into DD/MM/YYYY with slashes', () => {
+      expect(formatDisplayDate('2026-10-01')).toBe('01/10/2026');
+      expect(formatDisplayDate('2026-09-18')).toBe('18/09/2026');
+      expect(formatDisplayDate('2026-12-31')).toBe('31/12/2026');
+    });
+
+    it('returns empty string for null, undefined, or empty date strings', () => {
+      expect(formatDisplayDate(null)).toBe('');
+      expect(formatDisplayDate(undefined)).toBe('');
+      expect(formatDisplayDate('')).toBe('');
+    });
+
+    it('returns already formatted dates or non-matching strings as-is', () => {
+      expect(formatDisplayDate('01/10/2026')).toBe('01/10/2026');
+      expect(formatDisplayDate('No especificado')).toBe('No especificado');
+    });
+
+    it('normalizes various date inputs into canonical ISO YYYY-MM-DD', () => {
+      expect(normalizeToIsoDate('01/10/2026')).toBe('2026-10-01');
+      expect(normalizeToIsoDate('1/10/2026')).toBe('2026-10-01');
+      expect(normalizeToIsoDate('01-10-2026')).toBe('2026-10-01');
+      expect(normalizeToIsoDate('2026-10-01')).toBe('2026-10-01');
+      expect(normalizeToIsoDate(new Date('2026-10-01T00:00:00.000Z'))).toBe('2026-10-01');
+      expect(normalizeToIsoDate('')).toBe('');
+      expect(normalizeToIsoDate(null)).toBe('');
     });
   });
 });

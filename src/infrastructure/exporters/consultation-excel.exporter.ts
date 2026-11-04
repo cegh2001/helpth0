@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { Consultation } from '@/core/domain/entities/consultation.entity';
 import { ConsultationExporterPort } from '@/core/application/ports/consultation-exporter.port';
+import { formatDisplayDate } from '@/lib/date-utils';
 
 export { type ConsultationExporterPort };
 export type ConsultationExcelExporter = ConsultationExporterPort;
@@ -83,7 +84,7 @@ export class ExcelJsConsultationExporter implements ConsultationExcelExporter {
 
       const row = sheet.addRow([
         idx + 1,
-        c.date,
+        formatDisplayDate(c.date),
         c.patientName,
         c.patientCedula ?? '',
         c.patientAddress ?? '',

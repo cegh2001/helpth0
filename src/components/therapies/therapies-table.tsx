@@ -7,6 +7,7 @@ import { TherapiesFilterBar, TherapyFilterState } from './therapies-filter-bar';
 import { ExportTherapiesDialog } from './export-therapies-dialog';
 import { DataPagination } from '@/components/ui/data-pagination';
 import { clampPage, DEFAULT_PAGE_SIZE } from '@/components/ui/pagination-range';
+import { formatDisplayDate } from '@/lib/date-utils';
 import type { TherapySessionItem } from './therapy-session-item';
 
 interface Props {
@@ -100,7 +101,8 @@ export function TherapiesTable({
         item.dayOfWeekName.toLowerCase().includes(query) ||
         item.status.toLowerCase().includes(query) ||
         (item.observations?.toLowerCase().includes(query) ?? false) ||
-        item.date.includes(query)
+        item.date.includes(query) ||
+        formatDisplayDate(item.date).includes(query)
       );
     });
   }, [therapies, filter]);
@@ -235,7 +237,7 @@ export function TherapiesTable({
                     <td className="p-3 font-mono text-slate-400">
                       {(safePage - 1) * pageSize + index + 1}
                     </td>
-                    <td className="p-3 whitespace-nowrap font-medium text-slate-700">{item.date}</td>
+                    <td className="p-3 whitespace-nowrap font-medium text-slate-700">{formatDisplayDate(item.date)}</td>
                     <td className="p-3 text-[10px] font-semibold text-slate-500 uppercase">
                       {item.dayOfWeekName}
                     </td>

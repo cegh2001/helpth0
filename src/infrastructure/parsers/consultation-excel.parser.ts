@@ -12,6 +12,7 @@ import {
   buildConsultationsSummary,
 } from './consultation-exoneration.calculator';
 import { parseConsultationsFromCsv } from './consultation-csv.parser';
+import { normalizeToIsoDate } from '@/lib/date-utils';
 
 export {
   type ParseConsultationRowError,
@@ -76,13 +77,7 @@ export async function parseConsultationsFromBuffer(buffer: Buffer): Promise<Pars
     const isIndex = !isNaN(Number(firstCol));
     if (!isIndex) return;
 
-    const rawDate = vals[2];
-    let dateStr = '';
-    if (rawDate instanceof Date) {
-      dateStr = rawDate.toISOString().slice(0, 10);
-    } else if (typeof rawDate === 'string') {
-      dateStr = rawDate.slice(0, 10);
-    }
+    const dateStr = normalizeToIsoDate(vals[2]);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
 
     const patientName = String(vals[3] || '').trim();

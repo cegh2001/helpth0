@@ -65,6 +65,8 @@ describe('ExcelJsConsultationExporter', () => {
       });
     });
 
+    expect(sheet?.getRow(2).getCell(2).value).toBe('01/10/2026');
+    expect(sheet?.getRow(4).getCell(2).value).toBe('15/10/2026');
     expect(cellValues).toContain('CÁLCULO DE EXONERADOS Y TOTALES (COMPROMISO CONGREGACIÓN)');
     expect(cellValues).toContain('TOTAL A PAGAR POR LA CONGREGACIÓN');
     expect(cellValues).toContain('CONSOLIDADO GENERAL: INGRESOS DIRECTOS VS. APORTE CONGREGACIÓN');
@@ -102,6 +104,7 @@ describe('ExcelJsConsultationExporter', () => {
       });
     });
 
+    expect(sheet?.getRow(2).getCell(2).value).toBe('20/10/2026');
     expect(cellValues).toContain('DETALLE DE CASOS PENDIENTES DE PAGO EN EL PERÍODO');
     expect(cellValues).toContain('Rosmery Sanchez');
     expect(cellValues).toContain('TOTAL CASOS PENDIENTES');

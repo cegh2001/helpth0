@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { MedicalExam } from '@/core/domain/entities/medical-exam.entity';
 import { MedicalExamExporterPort } from '@/core/application/ports/medical-exam-exporter.port';
 import { appendStandardExcelSummary } from './standard-excel-summary.builder';
+import { formatDisplayDate } from '@/lib/date-utils';
 
 export { type MedicalExamExporterPort };
 export type MedicalExamExcelExporter = MedicalExamExporterPort;
@@ -79,10 +80,10 @@ export class ExcelJsMedicalExamExporter implements MedicalExamExcelExporter {
 
       const row = sheet.addRow([
         idx + 1,
-        c.date,
+        formatDisplayDate(c.date),
         c.patientName,
         c.patientCedula ?? '',
-        c.patientBirthDate ?? '',
+        formatDisplayDate(c.patientBirthDate) || (c.patientBirthDate ?? ''),
         c.patientPhone ?? '',
         c.patientAddress ?? '',
         c.examName ?? '',

@@ -10,6 +10,7 @@ import {
 import { ExportConsultationsDialog } from './export-consultations-dialog';
 import { DataPagination } from '@/components/ui/data-pagination';
 import { clampPage, DEFAULT_PAGE_SIZE } from '@/components/ui/pagination-range';
+import { formatDisplayDate } from '@/lib/date-utils';
 import type { ConsultationItem } from './consultation-item';
 
 interface Props {
@@ -112,7 +113,8 @@ export function ConsultationsTable({
         (c.patientCedula && c.patientCedula.includes(q)) ||
         c.doctorName.toLowerCase().includes(q) ||
         c.specialty.toLowerCase().includes(q) ||
-        c.date.includes(q)
+        c.date.includes(q) ||
+        formatDisplayDate(c.date).includes(q)
       );
     });
   }, [consultations, filter]);
@@ -236,7 +238,7 @@ export function ConsultationsTable({
                     <td className="p-3 text-slate-400 font-mono">
                       {(safePage - 1) * pageSize + index + 1}
                     </td>
-                    <td className="p-3 whitespace-nowrap font-medium text-slate-700">{item.date}</td>
+                    <td className="p-3 whitespace-nowrap font-medium text-slate-700">{formatDisplayDate(item.date)}</td>
                     <td className="p-3 font-semibold text-slate-900">{item.patientName}</td>
                     <td className="p-3 text-slate-600 font-mono">{item.patientCedula || 'Sin Cédula'}</td>
                     <td className="p-3 text-slate-700 whitespace-nowrap">{item.doctorName}</td>

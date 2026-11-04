@@ -50,7 +50,11 @@ describe('Report Exporters', () => {
     await workbook.xlsx.load(
       buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]
     );
+    const summarySheet = workbook.getWorksheet('Resumen de Clínica');
+    expect(summarySheet?.getCell('B3').value).toBe('01/09/2026 al 18/09/2026');
+
     const detailSheet = workbook.getWorksheet('Desglose Diario y Turnos');
+    expect(detailSheet?.getCell('A2').value).toBe('01/09/2026');
     expect(detailSheet?.getRow(1).values).not.toContain('Observaciones');
     expect(detailSheet?.getColumn(5).width).toBeGreaterThanOrEqual(34);
     expect(detailSheet?.getCell('E2').alignment.wrapText).toBe(true);

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TherapyReviewMetricsCards } from './review-metrics-cards';
 import { TherapyReviewTableRow } from './therapy-review-table-row';
+import { formatDisplayDate } from '@/lib/date-utils';
 
 export interface TherapyPreviewRow {
   date: string;
@@ -114,7 +115,8 @@ export function TherapiesReviewView({
         row.dayOfWeekName.toLowerCase().includes(query) ||
         row.status.toLowerCase().includes(query) ||
         (row.observations?.toLowerCase().includes(query) ?? false) ||
-        row.date.includes(query)
+        row.date.includes(query) ||
+        formatDisplayDate(row.date).includes(query)
     );
   }, [editableRows, search]);
 

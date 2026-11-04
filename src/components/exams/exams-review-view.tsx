@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ExamReviewMetricsCards } from './review-metrics-cards';
 import { ExamReviewTableRow } from './exam-review-table-row';
+import { formatDisplayDate } from '@/lib/date-utils';
 
 export interface ExamPreviewRow {
   date: string;
@@ -129,7 +130,8 @@ export function ExamsReviewView({
         (row.examName && row.examName.toLowerCase().includes(q)) ||
         row.status.toLowerCase().includes(q) ||
         (row.observations && row.observations.toLowerCase().includes(q)) ||
-        row.date.includes(q)
+        row.date.includes(q) ||
+        formatDisplayDate(row.date).includes(q)
       );
   }, [editableRows, search]);
 

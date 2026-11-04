@@ -50,6 +50,7 @@ describe('ExcelJsTherapyExporter', () => {
     await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
     const sheet = workbook.getWorksheet('Control de Terapias');
 
+    expect(sheet?.getRow(2).getCell(2).value).toBe('09/09/2026');
     expect(sheet?.getRow(2).getCell(3).value).toBe('LIC JOHANNA RAMETA');
     expect(sheet?.getRow(2).getCell(5).value).toBe('MIERCOLES');
     expect(sheet?.getRow(2).getCell(11).value).toBe(12301.5);

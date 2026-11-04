@@ -3,6 +3,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { formatDisplayDate } from '@/lib/date-utils';
 import { ExamPreviewRow } from './exams-review-view';
 
 interface Props {
@@ -48,7 +49,7 @@ export function ExamReviewTableRow({ row, index, onChange }: Props) {
           <Badge className="bg-emerald-600 text-white text-[10px]">Nuevo</Badge>
         )}
       </td>
-      <td className="p-2.5 whitespace-nowrap font-medium text-slate-700">{row.date}</td>
+      <td className="p-2.5 whitespace-nowrap font-medium text-slate-700">{formatDisplayDate(row.date)}</td>
       <td className="p-2">
         <Input
           value={row.patientName}

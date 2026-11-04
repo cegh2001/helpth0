@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { ClinicReportData, ReportExporterPort } from '@/core/application/ports/report-exporter.port';
+import { formatDisplayDate } from '@/lib/date-utils';
 
 export class ExcelJsReportExporter implements ReportExporterPort {
   async exportToExcel(data: ClinicReportData): Promise<Buffer> {
@@ -26,7 +27,7 @@ export class ExcelJsReportExporter implements ReportExporterPort {
     summarySheet.getRow(1).height = 30;
 
     summarySheet.addRow([]);
-    summarySheet.addRow(['Período:', `${data.startDate} al ${data.endDate}`]);
+    summarySheet.addRow(['Período:', `${formatDisplayDate(data.startDate)} al ${formatDisplayDate(data.endDate)}`]);
     summarySheet.addRow(['Fecha de Emisión:', data.generatedAt.toISOString().replace('T', ' ').substring(0, 19)]);
     summarySheet.addRow(['Total Pacientes:', data.totalPatientsPeriod]);
     summarySheet.getRow(3).font = { bold: true };
@@ -114,7 +115,7 @@ export class ExcelJsReportExporter implements ReportExporterPort {
     for (const doc of data.doctors) {
       for (const item of doc.dailyBreakdown) {
         const row = detailSheet.addRow([
-          item.date,
+          formatDisplayDate(item.date),
           item.dayName,
           doc.doctorName,
           doc.specialty,

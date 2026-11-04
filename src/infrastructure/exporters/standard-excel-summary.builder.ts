@@ -3,11 +3,22 @@ import {
   appendExonerationExcelSummary,
   ExonerationRowItem,
 } from './exoneration-excel-summary.builder';
+import { formatDisplayDate } from '@/lib/date-utils';
 
 export type SummaryRowItem = ExonerationRowItem;
 
 export function getWeekBucket(dateStr: string): string {
-  const day = parseInt(dateStr.slice(8, 10), 10);
+  let day = 1;
+  if (dateStr.includes('-')) {
+    const parts = dateStr.split('-');
+    day = parts[0].length === 4 ? parseInt(parts[2], 10) : parseInt(parts[0], 10);
+  } else if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    day = parts[0].length === 4 ? parseInt(parts[2], 10) : parseInt(parts[0], 10);
+  } else {
+    day = parseInt(dateStr.slice(8, 10), 10);
+  }
+  if (isNaN(day)) day = 1;
   if (day <= 7) return 'Semana 1';
   if (day <= 14) return 'Semana 2';
   if (day <= 21) return 'Semana 3';
@@ -161,7 +172,7 @@ export function appendStandardExcelSummary(
       totalPendingUsd = Number((totalPendingUsd + (item.amountUsd > 0 ? item.amountUsd : 0)).toFixed(2));
       const row = sheet.addRow([
         '',
-        item.date,
+        formatDisplayDate(item.date),
         item.patientName || `Caso ${subjectPlural}`,
         item.specialty || '-',
         item.amountUsd > 0 ? item.amountUsd : '',

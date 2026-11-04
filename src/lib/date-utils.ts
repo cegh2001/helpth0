@@ -14,6 +14,46 @@ export function formatLocalDate(date: Date = new Date()): string {
 }
 
 /**
+ * Formats a calendar date ('YYYY-MM-DD') into Latin American / Venezuelan display format ('DD/MM/YYYY').
+ * If the input is already in 'DD/MM/YYYY', it is returned unchanged.
+ * If input is null, undefined, or empty, returns an empty string.
+ */
+export function formatDisplayDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  const trimmed = dateStr.trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return `${day}/${month}/${year}`;
+  }
+  return trimmed;
+}
+
+/**
+ * Normalizes any incoming date value (ISO string 'YYYY-MM-DD', 'DD/MM/YYYY', 'DD-MM-YYYY', or Date object)
+ * into a canonical 'YYYY-MM-DD' calendar date string.
+ * Returns empty string if invalid or empty.
+ */
+export function normalizeToIsoDate(val: unknown): string {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return val.toISOString().slice(0, 10);
+  }
+  const str = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    return str.slice(0, 10);
+  }
+  const dmyMatch = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/.exec(str);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, '0');
+    const month = dmyMatch[2].padStart(2, '0');
+    const year = dmyMatch[3];
+    return `${year}-${month}-${day}`;
+  }
+  return '';
+}
+
+/**
  * Parses a 'YYYY-MM-DD' string into a local Date object set to midnight (00:00:00 local time).
  */
 export function parseLocalDate(dateStr: string): Date {

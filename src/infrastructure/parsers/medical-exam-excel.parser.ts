@@ -14,6 +14,7 @@ import {
   parseMedicalExamsFromCsv,
   buildMedicalExamsSummary,
 } from './medical-exam-csv.parser';
+import { normalizeToIsoDate } from '@/lib/date-utils';
 
 export {
   type ParseMedicalExamRowError,
@@ -23,15 +24,7 @@ export {
 };
 
 function formatDateValue(val: unknown): string {
-  if (!val) return '';
-  if (val instanceof Date) {
-    return val.toISOString().slice(0, 10);
-  }
-  const str = String(val).trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
-    return str.slice(0, 10);
-  }
-  return '';
+  return normalizeToIsoDate(val);
 }
 
 export async function parseMedicalExamsFromBuffer(buffer: Buffer): Promise<ParseMedicalExamsResult> {
