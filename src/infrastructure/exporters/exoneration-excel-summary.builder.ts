@@ -115,8 +115,24 @@ export function appendExonerationExcelSummary(
     fgColor: { argb: 'FFE2E8F0' },
   };
 
-  const directPatients = Math.max(0, totals.totalCount - summary.totalExonCount);
+  const directPatients = items.filter(
+    (i) =>
+      (i.amountPointBs + i.amountMobileBs + i.amountCashBs) > 0 ||
+      (i.amountUsd > 0 && i.exonerationPercent !== 100 && !i.status?.toUpperCase().includes('100%'))
+  ).length;
+
+  const directPatientsCount = directPatients > 0
+    ? directPatients
+    : Math.max(0, totals.totalCount - summary.totalExonCount);
+
+  const directUsd = items.reduce((sum, i) => {
+    if (i.exonerationPercent === 100 || i.status?.toUpperCase().includes('100%')) return sum;
+    return sum + (i.amountUsd > 0 ? i.amountUsd : 0);
+  }, 0);
+
   const totalServiceBs = totals.totalFacturadoBs + summary.totalExonBs;
+  const totalServiceUsd = directUsd + summary.totalExonUsd;
+
   const directPct = totalServiceBs > 0
     ? `${((totals.totalFacturadoBs / totalServiceBs) * 100).toFixed(1)}%`
     : '0.0%';
@@ -127,12 +143,15 @@ export function appendExonerationExcelSummary(
   const directRow = sheet.addRow([
     '',
     `Cobrado Directamente en Caja (${subjectPlural})`,
-    directPatients,
-    '',
+    directPatientsCount,
+    directUsd > 0 ? directUsd : '',
     totals.totalFacturadoBs,
     directPct,
   ]);
-  directRow.getCell(5).numFmt = '#,##0.00';
+  [4, 5].forEach((cIdx) => {
+    const cell = directRow.getCell(cIdx);
+    if (typeof cell.value === 'number') cell.numFmt = '#,##0.00';
+  });
 
   const exonRow = sheet.addRow([
     '',
@@ -151,7 +170,7 @@ export function appendExonerationExcelSummary(
     '',
     'VALOR TOTAL DEL SERVICIO PRESTADO',
     totals.totalCount,
-    summary.totalExonUsd,
+    totalServiceUsd > 0 ? totalServiceUsd : summary.totalExonUsd,
     totalServiceBs,
     '100.0%',
   ]);

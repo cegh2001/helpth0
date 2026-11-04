@@ -69,5 +69,6 @@ describe('ExcelJsConsultationExporter', () => {
     expect(cellValues).toContain('TOTAL A PAGAR POR LA CONGREGACIÓN');
     expect(cellValues).toContain('CONSOLIDADO GENERAL: INGRESOS DIRECTOS VS. APORTE CONGREGACIÓN');
     expect(cellValues).toContain('Exonerado 100%');
+    expect(cellValues).toContain('Aporte Fijo Congregación ($10)');
   });
 });

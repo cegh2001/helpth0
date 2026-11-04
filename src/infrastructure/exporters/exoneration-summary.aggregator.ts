@@ -10,6 +10,7 @@ export interface ExonerationRowItem {
   bcvRate?: number;
   exonerationPercent?: number;
   exoneratedAmountUsd?: number;
+  specialty?: string;
 }
 
 export interface ParsedItemExoneration {
@@ -60,7 +61,8 @@ export function parseExonerationTier(
     }
   }
 
-  if (percent <= 0) {
+  const hasExonAmount = item.exoneratedAmountUsd != null && item.exoneratedAmountUsd > 0;
+  if (percent <= 0 && !hasExonAmount) {
     return {
       isExonerated: false,
       percent: 0,
@@ -76,7 +78,7 @@ export function parseExonerationTier(
 
   if (item.exoneratedAmountUsd != null && item.exoneratedAmountUsd > 0) {
     exoneratedUsd = item.exoneratedAmountUsd;
-    if (baseUsd < exoneratedUsd) {
+    if (baseUsd < exoneratedUsd && percent > 0) {
       baseUsd = Number(((exoneratedUsd * 100) / percent).toFixed(2));
     }
   } else if (baseUsd > 0) {
@@ -88,7 +90,11 @@ export function parseExonerationTier(
 
   const rate = item.bcvRate && item.bcvRate > 0 ? item.bcvRate : avgBcvRate;
   const exoneratedBs = rate > 0 ? Number((exoneratedUsd * rate).toFixed(2)) : 0;
-  const tierLabel = percent === 100 ? 'Exonerado 100%' : `Exonerado ${percent}%`;
+  const tierLabel = percent === 100
+    ? 'Exonerado 100%'
+    : percent === 67
+      ? 'Aporte Fijo Congregación ($10)'
+      : `Exonerado ${percent}%`;
 
   return {
     isExonerated: true,

@@ -3,8 +3,10 @@ import {
   consultationRepository,
   consultationParser,
   importConsultationsUseCase,
+  specialtyRateRepository,
   workbookModuleGuard,
 } from '@/infrastructure/container';
+import { resolveConsultationAmounts } from '@/core/application/use-cases/consultations/consultation-rate.calculator';
 import { requireApiSession } from '@/lib/auth-guard';
 import { apiErrorResponse } from '@/lib/http-response';
 
@@ -75,19 +77,39 @@ export async function POST(request: NextRequest) {
         found.forEach((c) => existingHashes.add(c.importHash));
       }
 
-      const rowsWithStatus = parseResult.consultations.map((c) => ({
-        ...c,
-        isDuplicate: existingHashes.has(c.importHash),
-      }));
+      const ratesMap = new Map<string, number>();
+      if (specialtyRateRepository) {
+        const rates = await specialtyRateRepository.findAll();
+        rates.forEach((r) => ratesMap.set(r.specialty.trim().toLowerCase(), r.standardRateUsd));
+      }
+
+      const rowsWithStatus = parseResult.consultations.map((c) => {
+        const resolved = resolveConsultationAmounts(c, ratesMap);
+        return {
+          ...c,
+          amountUsd: resolved.amountUsd,
+          totalBs: resolved.totalBs,
+          exoneratedAmountUsd: resolved.exoneratedAmountUsd,
+          exonerationPercent: resolved.exonerationPercent,
+          status: resolved.status,
+          isDuplicate: existingHashes.has(c.importHash),
+        };
+      });
 
       const newRowsCount = rowsWithStatus.filter((r) => !r.isDuplicate).length;
       const duplicateCount = rowsWithStatus.length - newRowsCount;
+      const totalExoneratedUsd = Number(
+        rowsWithStatus.reduce((s, r) => s + r.exoneratedAmountUsd, 0).toFixed(2)
+      );
+      const exoneratedPatientsCount = rowsWithStatus.filter((r) => r.exoneratedAmountUsd > 0).length;
 
       return NextResponse.json({
         success: true,
         consultations: rowsWithStatus,
         summary: {
           ...parseResult.summary,
+          totalExoneratedUsd,
+          exoneratedPatientsCount,
           newRowsCount,
           duplicateCount,
         },

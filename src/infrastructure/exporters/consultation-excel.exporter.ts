@@ -5,7 +5,10 @@ import { ConsultationExporterPort } from '@/core/application/ports/consultation-
 export { type ConsultationExporterPort };
 export type ConsultationExcelExporter = ConsultationExporterPort;
 
-import { appendStandardExcelSummary } from './standard-excel-summary.builder';
+import {
+  appendStandardExcelSummary,
+  SummaryRowItem,
+} from './standard-excel-summary.builder';
 
 export class ExcelJsConsultationExporter implements ConsultationExcelExporter {
   async exportToExcel(consultations: Consultation[], titlePeriod = 'OCTUBRE 2026'): Promise<Buffer> {
@@ -177,7 +180,30 @@ export class ExcelJsConsultationExporter implements ConsultationExcelExporter {
     };
 
     // 5. Standardized Weekly and Condition Matrices
-    appendStandardExcelSummary(sheet, consultations, 'CONSULTAS Y PAGOS', titlePeriod);
+    const exportItems: SummaryRowItem[] = consultations.map((c) => {
+      const spec = (c.specialty || '').trim().toLowerCase();
+      const isPsy = spec === 'psicologia';
+      const defaultExon = isPsy ? 15 : 10;
+      const exonUsd = c.exoneratedAmountUsd > 0 ? c.exoneratedAmountUsd : defaultExon;
+      const exonPct = c.exonerationPercent > 0 ? c.exonerationPercent : (isPsy ? 100 : 67);
+
+      return {
+        date: c.date,
+        specialty: c.specialty,
+        amountPointBs: c.amountPointBs,
+        amountMobileBs: c.amountMobileBs,
+        amountCashBs: c.amountCashBs,
+        amountUsd: c.amountUsd,
+        totalBs: c.totalBs,
+        status: c.status,
+        observations: c.observations,
+        bcvRate: c.bcvRate,
+        exonerationPercent: exonPct,
+        exoneratedAmountUsd: exonUsd,
+      };
+    });
+
+    appendStandardExcelSummary(sheet, exportItems, 'CONSULTAS Y PAGOS', titlePeriod);
 
     const uint8Array = await workbook.xlsx.writeBuffer();
     return Buffer.from(uint8Array);

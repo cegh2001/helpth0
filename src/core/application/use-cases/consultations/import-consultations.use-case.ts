@@ -7,12 +7,10 @@ import {
   ConsultationProps,
 } from '@/core/domain/entities/consultation.entity';
 import {
-  DEFAULT_SPECIALTY_RATE_USD,
-} from '@/core/domain/entities/specialty-rate.entity';
-import {
   ConsultationParserPort,
   ParseConsultationsResult,
 } from '@/core/application/ports/consultation-parser.port';
+import { resolveConsultationAmounts } from './consultation-rate.calculator';
 
 export interface ImportConsultationsInput {
   csvContent?: string;
@@ -44,58 +42,6 @@ export class ImportConsultationsUseCase {
       ratesMap.set(r.specialty.trim().toLowerCase(), r.standardRateUsd);
     }
     return ratesMap;
-  }
-
-  private resolveConsultationAmounts(
-    c: {
-      amountPointBs?: number;
-      amountMobileBs?: number;
-      amountCashBs?: number;
-      bcvRate?: number;
-      amountUsd?: number;
-      totalBs?: number;
-      exonerationPercent?: number;
-      exoneratedAmountUsd?: number;
-      specialty?: string;
-    },
-    ratesMap: Map<string, number>
-  ): { amountUsd: number; totalBs: number; exoneratedAmountUsd: number } {
-    const amountPointBs = Number(c.amountPointBs) || 0;
-    const amountMobileBs = Number(c.amountMobileBs) || 0;
-    const amountCashBs = Number(c.amountCashBs) || 0;
-    const bcvRate = Number(c.bcvRate) || 0;
-    let amountUsd = Number(c.amountUsd) || 0;
-    let totalBs = Number(c.totalBs) || 0;
-    const percent = Math.max(0, Math.min(100, Number(c.exonerationPercent) || 0));
-    let exonUsd = Number(c.exoneratedAmountUsd) || 0;
-
-    const paidBs = amountPointBs + amountMobileBs + amountCashBs;
-    if (paidBs > 0) {
-      if (totalBs <= 0) totalBs = paidBs;
-      if (amountUsd <= 0 && bcvRate > 0) {
-        amountUsd = Number((paidBs / bcvRate).toFixed(2));
-      }
-    } else if (amountUsd > 0 && bcvRate > 0 && totalBs <= 0) {
-      totalBs = Number((amountUsd * bcvRate).toFixed(2));
-    }
-
-    if (percent > 0) {
-      if (amountUsd <= 0) {
-        const normSpec = (c.specialty || '').trim().toLowerCase();
-        const fallbackRate =
-          ratesMap.get(normSpec) ??
-          (normSpec === 'psicologia' ? 15 : DEFAULT_SPECIALTY_RATE_USD);
-        amountUsd = fallbackRate;
-      }
-      if (exonUsd <= 0 && amountUsd > 0) {
-        exonUsd = Number(((amountUsd * percent) / 100).toFixed(2));
-      }
-      if (totalBs <= 0 && amountUsd > 0 && bcvRate > 0) {
-        totalBs = Number((amountUsd * bcvRate).toFixed(2));
-      }
-    }
-
-    return { amountUsd, totalBs, exoneratedAmountUsd: exonUsd };
   }
 
   private async syncDoctors(
@@ -154,9 +100,7 @@ export class ImportConsultationsUseCase {
             continue;
           }
 
-          const { amountUsd, totalBs, exoneratedAmountUsd } =
-            this.resolveConsultationAmounts(c, ratesMap);
-          const percent = Math.max(0, Math.min(100, Number(c.exonerationPercent) || 0));
+          const resolved = resolveConsultationAmounts(c, ratesMap);
 
           const entity = Consultation.create({
             id: c.id,
@@ -173,17 +117,11 @@ export class ImportConsultationsUseCase {
             amountMobileBs: Number(c.amountMobileBs) || 0,
             amountCashBs: Number(c.amountCashBs) || 0,
             bcvRate: Number(c.bcvRate) || 0,
-            amountUsd,
-            totalBs,
-            status: c.status
-              ? String(c.status).trim()
-              : percent === 100
-                ? 'EXONERADO 100%'
-                : percent > 0
-                  ? `EXONERADO ${percent}%`
-                  : 'COMPLETO',
-            exonerationPercent: percent,
-            exoneratedAmountUsd,
+            amountUsd: resolved.amountUsd,
+            totalBs: resolved.totalBs,
+            status: resolved.status,
+            exonerationPercent: resolved.exonerationPercent,
+            exoneratedAmountUsd: resolved.exoneratedAmountUsd,
             observations: c.observations ? String(c.observations).trim() : null,
             importHash: c.importHash,
             createdAt: c.createdAt ? new Date(c.createdAt) : undefined,
@@ -244,26 +182,46 @@ export class ImportConsultationsUseCase {
 
     const doctorIdMap = await this.syncDoctors(parseResult.consultations);
     const enrichedConsultations = parseResult.consultations.map((c) => {
-      const { amountUsd, totalBs, exoneratedAmountUsd } =
-        this.resolveConsultationAmounts(c, ratesMap);
+      const resolved = resolveConsultationAmounts(c, ratesMap);
 
       return Consultation.create({
         ...c,
-        amountUsd,
-        totalBs,
-        exoneratedAmountUsd,
+        amountUsd: resolved.amountUsd,
+        totalBs: resolved.totalBs,
+        exoneratedAmountUsd: resolved.exoneratedAmountUsd,
+        exonerationPercent: resolved.exonerationPercent,
+        status: resolved.status,
         doctorId: c.doctorId || (c.doctorName ? doctorIdMap.get(c.doctorName.toLowerCase()) : undefined),
       });
     });
 
     const saveResult = await this.consultationRepository.saveMany(enrichedConsultations);
 
+    const bcvRates = enrichedConsultations.map((c) => c.bcvRate).filter((r) => r > 0);
+    const dates = enrichedConsultations.map((c) => c.date).sort();
+    const enrichedSummary = {
+      totalParsed: enrichedConsultations.length,
+      totalAmountUsd: enrichedConsultations.reduce((s, c) => s + c.amountUsd, 0),
+      totalAmountBs: enrichedConsultations.reduce((s, c) => s + c.totalBs, 0),
+      totalExoneratedUsd: Number(
+        enrichedConsultations.reduce((s, c) => s + c.exoneratedAmountUsd, 0).toFixed(2)
+      ),
+      exoneratedPatientsCount: enrichedConsultations.filter((c) => c.exoneratedAmountUsd > 0).length,
+      averageBcvRate:
+        bcvRates.length > 0 ? Number((bcvRates.reduce((a, b) => a + b, 0) / bcvRates.length).toFixed(2)) : 0,
+      minBcvRate: bcvRates.length > 0 ? Math.min(...bcvRates) : 0,
+      maxBcvRate: bcvRates.length > 0 ? Math.max(...bcvRates) : 0,
+      uniqueDoctors: Array.from(new Set(enrichedConsultations.map((c) => c.doctorName))),
+      uniqueSpecialties: Array.from(new Set(enrichedConsultations.map((c) => c.specialty))),
+      dateRange: dates.length > 0 ? { min: dates[0], max: dates[dates.length - 1] } : null,
+    };
+
     return {
       totalInFile: parseResult.consultations.length,
       inserted: saveResult.inserted,
       skippedDuplicates: saveResult.skipped,
       errors: parseResult.errors,
-      summary: parseResult.summary,
+      summary: enrichedSummary,
     };
   }
 }
