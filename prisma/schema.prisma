@@ -236,3 +236,14 @@ model TherapySession {
   @@index([status])
 }
 
+model SpecialtyRate {
+  id              String   @id @default(cuid())
+  specialty       String   @unique
+  standardRateUsd Float    @default(10)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([specialty])
+}
+
+

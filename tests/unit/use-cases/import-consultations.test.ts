@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { InMemoryConsultationRepository } from '../../mocks/in-memory-consultation.repository';
 import { InMemoryDoctorRepository } from '../../mocks/in-memory-doctor.repository';
+import { InMemorySpecialtyRateRepository } from '../../mocks/in-memory-specialty-rate.repository';
 import { ImportConsultationsUseCase } from '@/core/application/use-cases/consultations/import-consultations.use-case';
 import { ConsultationCsvParser } from '@/infrastructure/parsers/consultation-excel.parser';
+import { SpecialtyRate } from '@/core/domain/entities/specialty-rate.entity';
 
 const SAMPLE_CSV = `
 #,Fecha,Nombre y Apellido,Cedula,Direccion,Telefono,Medicos,Consulta,Punto,Pago Movil,Efectivo,Tasa BCV,Divisas,TOTAL,Observaciones
@@ -108,5 +110,80 @@ describe('ImportConsultationsUseCase', () => {
     expect(saved[1].exonerationPercent).toBe(100);
     expect(saved[1].exoneratedAmountUsd).toBe(15);
     expect(saved[1].status).toBe('EXONERADO 100%');
+  });
+
+  it('applies configured specialty rate ($15 for Psicologia, $10 default for others) when exonerated consultation lacks amountUsd', async () => {
+    const repository = new InMemoryConsultationRepository();
+    const rateRepo = new InMemorySpecialtyRateRepository();
+    const parser = new ConsultationCsvParser();
+    const useCase = new ImportConsultationsUseCase(repository, parser, undefined, rateRepo);
+
+    rateRepo.seed([
+      SpecialtyRate.create({
+        specialty: 'Psicologia',
+        standardRateUsd: 15,
+      }),
+    ]);
+
+    const inputData = [
+      {
+        date: '2026-10-01',
+        patientName: 'PACIENTE PSICOLOGIA EXONERADO',
+        doctorName: 'LIC MARIA DE SOUSA',
+        specialty: 'Psicologia',
+        bcvRate: 860,
+        amountPointBs: 0,
+        amountMobileBs: 0,
+        amountCashBs: 0,
+        amountUsd: 0,
+        exonerationPercent: 100,
+      },
+      {
+        date: '2026-10-01',
+        patientName: 'PACIENTE TRAUMATOLOGIA EXONERADO',
+        doctorName: 'DRA MAILET CONTRERA',
+        specialty: 'Traumatologia',
+        bcvRate: 860,
+        amountPointBs: 0,
+        amountMobileBs: 0,
+        amountCashBs: 0,
+        amountUsd: 0,
+        exonerationPercent: 100,
+      },
+      {
+        date: '2026-10-01',
+        patientName: 'PACIENTE CON MONTO EXPLICITO',
+        doctorName: 'DR GREGORY HOUSE',
+        specialty: 'Psicologia',
+        bcvRate: 860,
+        amountPointBs: 0,
+        amountMobileBs: 0,
+        amountCashBs: 0,
+        amountUsd: 25,
+        exonerationPercent: 100,
+      },
+    ];
+
+    await useCase.execute({ consultations: inputData as never });
+
+    const saved = await repository.findMany();
+    expect(saved.length).toBe(3);
+
+    // 1. Psicologia -> matched in repo -> $15
+    expect(saved[0].specialty).toBe('Psicologia');
+    expect(saved[0].amountUsd).toBe(15);
+    expect(saved[0].exoneratedAmountUsd).toBe(15);
+    expect(saved[0].totalBs).toBe(12900); // 15 * 860
+
+    // 2. Traumatologia -> not in repo -> default $10
+    expect(saved[1].specialty).toBe('Traumatologia');
+    expect(saved[1].amountUsd).toBe(10);
+    expect(saved[1].exoneratedAmountUsd).toBe(10);
+    expect(saved[1].totalBs).toBe(8600); // 10 * 860
+
+    // 3. Explicit amount in input -> preserves $25
+    expect(saved[2].amountUsd).toBe(25);
+    expect(saved[2].exoneratedAmountUsd).toBe(25);
+    expect(saved[2].totalBs).toBe(21500); // 25 * 860
   });
 });

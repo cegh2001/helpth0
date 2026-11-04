@@ -32,6 +32,7 @@ describe('DASHBOARD_MODULES', () => {
       '/terapias',
       '/recepcion',
       '/medicos',
+      '/tarifas',
     ]);
   });
 });

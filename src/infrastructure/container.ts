@@ -6,6 +6,7 @@ import { PrismaAdminAccountRepository } from './persistence/repositories/prisma-
 import { PrismaConsultationRepository } from './persistence/repositories/prisma-consultation.repository';
 import { PrismaMedicalExamRepository } from './persistence/repositories/prisma-medical-exam.repository';
 import { PrismaTherapyRepository } from './persistence/repositories/prisma-therapy.repository';
+import { PrismaSpecialtyRateRepository } from './persistence/repositories/prisma-specialty-rate.repository';
 import { ExcelJsReportExporter } from './exporters/exceljs-report.exporter';
 import { PdfKitReportExporter } from './exporters/pdfkit-report.exporter';
 import { ExcelJsConsultationExporter } from './exporters/consultation-excel.exporter';
@@ -35,6 +36,9 @@ import { ExportMedicalExamsUseCase } from '@/core/application/use-cases/exams/ex
 import { ImportTherapiesUseCase } from '@/core/application/use-cases/therapies/import-therapies.use-case';
 import { GetTherapiesUseCase } from '@/core/application/use-cases/therapies/get-therapies.use-case';
 import { ExportTherapiesUseCase } from '@/core/application/use-cases/therapies/export-therapies.use-case';
+import { GetSpecialtyRatesUseCase } from '@/core/application/use-cases/specialty-rates/get-specialty-rates.use-case';
+import { SaveSpecialtyRateUseCase } from '@/core/application/use-cases/specialty-rates/save-specialty-rate.use-case';
+import { DeleteSpecialtyRateUseCase } from '@/core/application/use-cases/specialty-rates/delete-specialty-rate.use-case';
 
 // Persistence Repositories
 export const doctorRepository = new PrismaDoctorRepository(prisma);
@@ -44,6 +48,7 @@ export const adminAccountRepository = new PrismaAdminAccountRepository(prisma);
 export const consultationRepository = new PrismaConsultationRepository(prisma);
 export const medicalExamRepository = new PrismaMedicalExamRepository(prisma);
 export const therapyRepository = new PrismaTherapyRepository(prisma);
+export const specialtyRateRepository = new PrismaSpecialtyRateRepository(prisma);
 
 // Exporters & Parsers
 export const excelExporter = new ExcelJsReportExporter();
@@ -88,7 +93,8 @@ export const checkSetupStatusUseCase = new CheckSetupStatusUseCase(adminAccountR
 export const importConsultationsUseCase = new ImportConsultationsUseCase(
   consultationRepository,
   consultationParser,
-  doctorRepository
+  doctorRepository,
+  specialtyRateRepository
 );
 export const getConsultationsUseCase = new GetConsultationsUseCase(consultationRepository);
 export const exportConsultationsUseCase = new ExportConsultationsUseCase(
@@ -113,3 +119,6 @@ export const exportTherapiesUseCase = new ExportTherapiesUseCase(
   therapyRepository,
   therapyExcelExporter
 );
+export const getSpecialtyRatesUseCase = new GetSpecialtyRatesUseCase(specialtyRateRepository);
+export const saveSpecialtyRateUseCase = new SaveSpecialtyRateUseCase(specialtyRateRepository);
+export const deleteSpecialtyRateUseCase = new DeleteSpecialtyRateUseCase(specialtyRateRepository);

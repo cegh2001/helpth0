@@ -17,6 +17,7 @@ const CURRENT_DELEGATES = [
   'consultation',
   'medicalExam',
   'therapySession',
+  'specialtyRate',
 ];
 
 function cache(
@@ -33,8 +34,8 @@ describe('isPrismaClientCurrent', () => {
     expect(isPrismaClientCurrent(cache(CURRENT_DELEGATES))).toBe(true);
   });
 
-  it('rejects the stale client that predates the TherapySession model', () => {
-    const stale = CURRENT_DELEGATES.filter((name) => name !== 'therapySession');
+  it('rejects the stale client that predates the SpecialtyRate model', () => {
+    const stale = CURRENT_DELEGATES.filter((name) => name !== 'specialtyRate');
 
     expect(isPrismaClientCurrent(cache(stale))).toBe(false);
   });

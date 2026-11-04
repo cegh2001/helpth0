@@ -1,4 +1,4 @@
-export type ModuleId = 'consultations' | 'exams' | 'therapies' | 'desk' | 'doctors';
+export type ModuleId = 'consultations' | 'exams' | 'therapies' | 'desk' | 'doctors' | 'rates';
 
 export interface DashboardModule {
   id: ModuleId;
@@ -12,6 +12,7 @@ export const DASHBOARD_MODULES: readonly DashboardModule[] = [
   { id: 'therapies', href: '/terapias', label: 'Terapias y Rehabilitación' },
   { id: 'desk', href: '/recepcion', label: 'Recepción Diaria' },
   { id: 'doctors', href: '/medicos', label: 'Médicos y Horarios' },
+  { id: 'rates', href: '/tarifas', label: 'Tarifas y Exoneración' },
 ];
 
 export function isModuleActive(pathname: string | null, href: string): boolean {

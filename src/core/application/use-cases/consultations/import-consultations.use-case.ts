@@ -1,7 +1,14 @@
 import { ConsultationRepository } from '@/core/domain/repositories/consultation.repository';
 import { DoctorRepository } from '@/core/domain/repositories/doctor.repository';
+import { SpecialtyRateRepository } from '@/core/domain/repositories/specialty-rate.repository';
 import { Doctor } from '@/core/domain/entities/doctor.entity';
-import { Consultation, ConsultationProps } from '@/core/domain/entities/consultation.entity';
+import {
+  Consultation,
+  ConsultationProps,
+} from '@/core/domain/entities/consultation.entity';
+import {
+  DEFAULT_SPECIALTY_RATE_USD,
+} from '@/core/domain/entities/specialty-rate.entity';
 import {
   ConsultationParserPort,
   ParseConsultationsResult,
@@ -25,8 +32,71 @@ export class ImportConsultationsUseCase {
   constructor(
     private readonly consultationRepository: ConsultationRepository,
     private readonly parser: ConsultationParserPort,
-    private readonly doctorRepository?: DoctorRepository
+    private readonly doctorRepository?: DoctorRepository,
+    private readonly specialtyRateRepository?: SpecialtyRateRepository
   ) {}
+
+  private async loadRatesMap(): Promise<Map<string, number>> {
+    const ratesMap = new Map<string, number>();
+    if (!this.specialtyRateRepository) return ratesMap;
+    const rates = await this.specialtyRateRepository.findAll();
+    for (const r of rates) {
+      ratesMap.set(r.specialty.trim().toLowerCase(), r.standardRateUsd);
+    }
+    return ratesMap;
+  }
+
+  private resolveConsultationAmounts(
+    c: {
+      amountPointBs?: number;
+      amountMobileBs?: number;
+      amountCashBs?: number;
+      bcvRate?: number;
+      amountUsd?: number;
+      totalBs?: number;
+      exonerationPercent?: number;
+      exoneratedAmountUsd?: number;
+      specialty?: string;
+    },
+    ratesMap: Map<string, number>
+  ): { amountUsd: number; totalBs: number; exoneratedAmountUsd: number } {
+    const amountPointBs = Number(c.amountPointBs) || 0;
+    const amountMobileBs = Number(c.amountMobileBs) || 0;
+    const amountCashBs = Number(c.amountCashBs) || 0;
+    const bcvRate = Number(c.bcvRate) || 0;
+    let amountUsd = Number(c.amountUsd) || 0;
+    let totalBs = Number(c.totalBs) || 0;
+    const percent = Math.max(0, Math.min(100, Number(c.exonerationPercent) || 0));
+    let exonUsd = Number(c.exoneratedAmountUsd) || 0;
+
+    const paidBs = amountPointBs + amountMobileBs + amountCashBs;
+    if (paidBs > 0) {
+      if (totalBs <= 0) totalBs = paidBs;
+      if (amountUsd <= 0 && bcvRate > 0) {
+        amountUsd = Number((paidBs / bcvRate).toFixed(2));
+      }
+    } else if (amountUsd > 0 && bcvRate > 0 && totalBs <= 0) {
+      totalBs = Number((amountUsd * bcvRate).toFixed(2));
+    }
+
+    if (percent > 0) {
+      if (amountUsd <= 0) {
+        const normSpec = (c.specialty || '').trim().toLowerCase();
+        const fallbackRate =
+          ratesMap.get(normSpec) ??
+          (normSpec === 'psicologia' ? 15 : DEFAULT_SPECIALTY_RATE_USD);
+        amountUsd = fallbackRate;
+      }
+      if (exonUsd <= 0 && amountUsd > 0) {
+        exonUsd = Number(((amountUsd * percent) / 100).toFixed(2));
+      }
+      if (totalBs <= 0 && amountUsd > 0 && bcvRate > 0) {
+        totalBs = Number((amountUsd * bcvRate).toFixed(2));
+      }
+    }
+
+    return { amountUsd, totalBs, exoneratedAmountUsd: exonUsd };
+  }
 
   private async syncDoctors(
     consultations: Array<{ doctorName: string; specialty: string }>
@@ -64,6 +134,8 @@ export class ImportConsultationsUseCase {
   }
 
   async execute(input: ImportConsultationsInput): Promise<ImportConsultationsOutput> {
+    const ratesMap = await this.loadRatesMap();
+
     if (input.consultations && input.consultations.length > 0) {
       const doctorIdMap = await this.syncDoctors(input.consultations);
 
@@ -82,28 +154,9 @@ export class ImportConsultationsUseCase {
             continue;
           }
 
-          const amountPointBs = Number(c.amountPointBs) || 0;
-          const amountMobileBs = Number(c.amountMobileBs) || 0;
-          const amountCashBs = Number(c.amountCashBs) || 0;
-          const bcvRate = Number(c.bcvRate) || 0;
-          let amountUsd = Number(c.amountUsd) || 0;
-          let totalBs = Number(c.totalBs) || 0;
-
-          const paidBs = amountPointBs + amountMobileBs + amountCashBs;
-          if (paidBs > 0) {
-            if (totalBs <= 0) totalBs = paidBs;
-            if (amountUsd <= 0 && bcvRate > 0) {
-              amountUsd = Number((paidBs / bcvRate).toFixed(2));
-            }
-          } else if (amountUsd > 0 && bcvRate > 0 && totalBs <= 0) {
-            totalBs = Number((amountUsd * bcvRate).toFixed(2));
-          }
-
+          const { amountUsd, totalBs, exoneratedAmountUsd } =
+            this.resolveConsultationAmounts(c, ratesMap);
           const percent = Math.max(0, Math.min(100, Number(c.exonerationPercent) || 0));
-          let exonUsd = Number(c.exoneratedAmountUsd) || 0;
-          if (percent > 0 && exonUsd === 0 && amountUsd > 0) {
-            exonUsd = Number(((amountUsd * percent) / 100).toFixed(2));
-          }
 
           const entity = Consultation.create({
             id: c.id,
@@ -116,10 +169,10 @@ export class ImportConsultationsUseCase {
             doctorId: c.doctorId || (doctorName ? doctorIdMap.get(doctorName.toLowerCase()) : undefined),
             doctorName,
             specialty,
-            amountPointBs,
-            amountMobileBs,
-            amountCashBs,
-            bcvRate,
+            amountPointBs: Number(c.amountPointBs) || 0,
+            amountMobileBs: Number(c.amountMobileBs) || 0,
+            amountCashBs: Number(c.amountCashBs) || 0,
+            bcvRate: Number(c.bcvRate) || 0,
             amountUsd,
             totalBs,
             status: c.status
@@ -130,7 +183,7 @@ export class ImportConsultationsUseCase {
                   ? `EXONERADO ${percent}%`
                   : 'COMPLETO',
             exonerationPercent: percent,
-            exoneratedAmountUsd: exonUsd,
+            exoneratedAmountUsd,
             observations: c.observations ? String(c.observations).trim() : null,
             importHash: c.importHash,
             createdAt: c.createdAt ? new Date(c.createdAt) : undefined,
@@ -190,17 +243,23 @@ export class ImportConsultationsUseCase {
     }
 
     const doctorIdMap = await this.syncDoctors(parseResult.consultations);
-    const enrichedConsultations = parseResult.consultations.map((c) =>
-      Consultation.create({
+    const enrichedConsultations = parseResult.consultations.map((c) => {
+      const { amountUsd, totalBs, exoneratedAmountUsd } =
+        this.resolveConsultationAmounts(c, ratesMap);
+
+      return Consultation.create({
         ...c,
-        doctorId: c.doctorId || doctorIdMap.get(c.doctorName.toLowerCase()),
-      })
-    );
+        amountUsd,
+        totalBs,
+        exoneratedAmountUsd,
+        doctorId: c.doctorId || (c.doctorName ? doctorIdMap.get(c.doctorName.toLowerCase()) : undefined),
+      });
+    });
 
     const saveResult = await this.consultationRepository.saveMany(enrichedConsultations);
 
     return {
-      totalInFile: enrichedConsultations.length,
+      totalInFile: parseResult.consultations.length,
       inserted: saveResult.inserted,
       skippedDuplicates: saveResult.skipped,
       errors: parseResult.errors,

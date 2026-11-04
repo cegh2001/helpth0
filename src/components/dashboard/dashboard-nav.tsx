@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Activity,
+  BadgeDollarSign,
   FileSpreadsheet,
   FlaskConical,
   HeartPulse,
@@ -18,6 +19,7 @@ const MODULE_ICONS: Record<DashboardModule['id'], LucideIcon> = {
   therapies: HeartPulse,
   desk: Activity,
   doctors: Stethoscope,
+  rates: BadgeDollarSign,
 };
 
 const MODULE_ICON_TONES: Record<DashboardModule['id'], string> = {
@@ -26,6 +28,7 @@ const MODULE_ICON_TONES: Record<DashboardModule['id'], string> = {
   therapies: 'text-teal-600',
   desk: 'text-slate-600',
   doctors: 'text-purple-600',
+  rates: 'text-amber-600',
 };
 
 interface ModuleLinkProps {
