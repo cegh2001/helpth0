@@ -107,7 +107,7 @@ export function appendStandardExcelSummary(
 
   const weeklyTotalRow = sheet.addRow([
     '',
-    'TOTAL GENERAL',
+    `TOTAL ${subjectPlural.toUpperCase()}`,
     totalPatients,
     totalUsd,
     totalPointBs,
@@ -131,74 +131,76 @@ export function appendStandardExcelSummary(
   sheet.addRow([]); // Blank line
   sheet.addRow([]); // Blank line
 
-  // 2. Status / Condition matrix
-  const statusHeaderTitle = sheet.addRow(['', 'CLASIFICACIÓN POR ESTATUS Y CONDICIÓN DE PAGO']);
-  statusHeaderTitle.font = { bold: true, size: 12, color: { argb: 'FF1E3A8A' } };
+  // 2. Control de pagos pendientes en el período
+  const pendingItems = items.filter((item) => {
+    const raw = `${item.status ?? ''} ${item.observations ?? ''}`.toUpperCase();
+    return raw.includes('PENDIENTE');
+  });
 
-  const statusCols = sheet.addRow([
-    '',
-    'Condición / Observación',
-    `Cantidad de ${subjectPlural}`,
-    'Monto en Divisas ($)',
-    'Total Equivalente (Bs)',
-    '% de Casos',
-  ]);
-  statusCols.font = { bold: true };
-  statusCols.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FFE2E8F0' },
-  };
+  if (pendingItems.length > 0) {
+    const pendingHeaderTitle = sheet.addRow(['', 'DETALLE DE CASOS PENDIENTES DE PAGO EN EL PERÍODO']);
+    pendingHeaderTitle.font = { bold: true, size: 12, color: { argb: 'FF991B1B' } };
 
-  const statusMap = new Map<string, { count: number; usd: number; totalBs: number }>();
-  for (const item of items) {
-    const rawKey = (item.observations?.trim() || item.status.trim()).toUpperCase();
-    const cur = statusMap.get(rawKey) || { count: 0, usd: 0, totalBs: 0 };
-    cur.count++;
-    cur.usd += item.amountUsd;
-    cur.totalBs += item.totalBs;
-    statusMap.set(rawKey, cur);
-  }
-
-  for (const [statusKey, data] of statusMap.entries()) {
-    const percent = items.length > 0 ? ((data.count / items.length) * 100).toFixed(1) + '%' : '0%';
-    const row = sheet.addRow([
+    const pendingCols = sheet.addRow([
       '',
-      statusKey,
-      data.count,
-      data.usd > 0 ? data.usd : '',
-      data.totalBs > 0 ? data.totalBs : '',
-      percent,
+      'Fecha',
+      `Paciente / Caso`,
+      'Especialidad / Detalle',
+      'Monto Pendiente ($)',
+      'Condición / Estatus',
     ]);
+    pendingCols.font = { bold: true };
+    pendingCols.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFEE2E2' },
+    };
 
-    [4, 5].forEach((cIdx) => {
-      const cell = row.getCell(cIdx);
+    let totalPendingUsd = 0;
+    for (const item of pendingItems) {
+      totalPendingUsd = Number((totalPendingUsd + (item.amountUsd > 0 ? item.amountUsd : 0)).toFixed(2));
+      const row = sheet.addRow([
+        '',
+        item.date,
+        item.patientName || `Caso ${subjectPlural}`,
+        item.specialty || '-',
+        item.amountUsd > 0 ? item.amountUsd : '',
+        item.observations?.trim() || item.status.trim(),
+      ]);
+
+      const cell = row.getCell(5);
       if (typeof cell.value === 'number') {
         cell.numFmt = '#,##0.00';
       }
-    });
-  }
-
-  const statusTotalRow = sheet.addRow([
-    '',
-    `TOTAL ${subjectPlural.toUpperCase()}`,
-    totalPatients,
-    totalUsd,
-    totalFacturadoBs,
-    '100.0%',
-  ]);
-  statusTotalRow.font = { bold: true };
-  statusTotalRow.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FFCBD5E1' },
-  };
-  [4, 5].forEach((cIdx) => {
-    const cell = statusTotalRow.getCell(cIdx);
-    if (typeof cell.value === 'number') {
-      cell.numFmt = '#,##0.00';
     }
-  });
+
+    const pendingTotalRow = sheet.addRow([
+      '',
+      'TOTAL CASOS PENDIENTES',
+      pendingItems.length,
+      '',
+      totalPendingUsd > 0 ? totalPendingUsd : '',
+      'Seguimiento administrativo requerido',
+    ]);
+    pendingTotalRow.font = { bold: true, color: { argb: 'FF991B1B' } };
+    pendingTotalRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFECACA' },
+    };
+    const totalCell = pendingTotalRow.getCell(5);
+    if (typeof totalCell.value === 'number') {
+      totalCell.numFmt = '#,##0.00';
+    }
+  } else {
+    const okHeaderTitle = sheet.addRow(['', 'CONTROL DE PAGOS: 100% SOLVENTE']);
+    okHeaderTitle.font = { bold: true, size: 11, color: { argb: 'FF166534' } };
+    const okRow = sheet.addRow([
+      '',
+      'No se registran casos pendientes de pago en el período auditado.',
+    ]);
+    okRow.font = { italic: true, size: 9, color: { argb: 'FF15803D' } };
+  }
 
   appendExonerationExcelSummary(sheet, items, subjectPlural, {
     totalCount: totalPatients,

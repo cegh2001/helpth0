@@ -11,6 +11,7 @@ export interface ExonerationRowItem {
   exonerationPercent?: number;
   exoneratedAmountUsd?: number;
   specialty?: string;
+  patientName?: string;
 }
 
 export interface ParsedItemExoneration {
@@ -25,6 +26,7 @@ export interface ParsedItemExoneration {
 export interface ExonerationTierData {
   tierLabel: string;
   count: number;
+  unitRateUsd: number;
   baseUsd: number;
   exoneratedUsd: number;
   exoneratedBs: number;
@@ -41,7 +43,7 @@ export interface ExonerationAggregationResult {
 
 export function parseExonerationTier(
   item: ExonerationRowItem,
-  avgBcvRate: number
+  avgBcvRate = 0
 ): ParsedItemExoneration {
   let percent = 0;
   if (item.exonerationPercent != null && item.exonerationPercent > 0) {
@@ -124,23 +126,28 @@ export function aggregateExonerations(items: ExonerationRowItem[]): ExonerationA
     const parsed = parseExonerationTier(item, avgBcvRate);
     if (!parsed.isExonerated) continue;
 
+    const unitRate = parsed.tierLabel.includes('100%')
+      ? 15
+      : (parsed.tierLabel.includes('$10') || parsed.percent === 67 ? 10 : (parsed.baseUsd > 0 ? parsed.baseUsd : 10));
+
     const cur = tierMap.get(parsed.tierLabel) ?? {
       tierLabel: parsed.tierLabel,
       count: 0,
+      unitRateUsd: unitRate,
       baseUsd: 0,
       exoneratedUsd: 0,
       exoneratedBs: 0,
     };
     cur.count++;
-    cur.baseUsd += parsed.baseUsd;
-    cur.exoneratedUsd += parsed.exoneratedUsd;
-    cur.exoneratedBs += parsed.exoneratedBs;
+    cur.baseUsd = Number((cur.baseUsd + parsed.baseUsd).toFixed(2));
+    cur.exoneratedUsd = Number((cur.exoneratedUsd + parsed.exoneratedUsd).toFixed(2));
+    cur.exoneratedBs = Number((cur.exoneratedBs + parsed.exoneratedBs).toFixed(2));
     tierMap.set(parsed.tierLabel, cur);
 
     totalExonCount++;
-    totalExonBaseUsd += parsed.baseUsd;
-    totalExonUsd += parsed.exoneratedUsd;
-    totalExonBs += parsed.exoneratedBs;
+    totalExonBaseUsd = Number((totalExonBaseUsd + parsed.baseUsd).toFixed(2));
+    totalExonUsd = Number((totalExonUsd + parsed.exoneratedUsd).toFixed(2));
+    totalExonBs = Number((totalExonBs + parsed.exoneratedBs).toFixed(2));
   }
 
   const sortedTiers = Array.from(tierMap.values()).sort((a, b) => {

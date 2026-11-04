@@ -70,5 +70,40 @@ describe('ExcelJsConsultationExporter', () => {
     expect(cellValues).toContain('CONSOLIDADO GENERAL: INGRESOS DIRECTOS VS. APORTE CONGREGACIÓN');
     expect(cellValues).toContain('Exonerado 100%');
     expect(cellValues).toContain('Aporte Fijo Congregación ($10)');
+    expect(cellValues).toContain('CONTROL DE PAGOS: 100% SOLVENTE');
+    expect(cellValues).not.toContain('CLASIFICACIÓN POR ESTATUS Y CONDICIÓN DE PAGO');
+  });
+
+  it('renders pending payments alert section when pending consultations exist', async () => {
+    const exporter = new ExcelJsConsultationExporter();
+    const consultations = [
+      Consultation.create({
+        date: '2026-10-20',
+        patientName: 'Rosmery Sanchez',
+        doctorName: 'Dr Deiby Chirinos',
+        specialty: 'Neumonologia',
+        amountPointBs: 0,
+        bcvRate: 860,
+        amountUsd: 5,
+        status: 'PENDIENTE',
+        observations: 'PENDIENTE DE PAGO',
+      }),
+    ];
+
+    const buffer = await exporter.exportToExcel(consultations, 'OCTUBRE 2026');
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+    const sheet = workbook.getWorksheet('Consultas y Pagos');
+
+    const cellValues: string[] = [];
+    sheet?.eachRow((row) => {
+      (row.values as unknown[]).forEach((val) => {
+        if (typeof val === 'string') cellValues.push(val);
+      });
+    });
+
+    expect(cellValues).toContain('DETALLE DE CASOS PENDIENTES DE PAGO EN EL PERÍODO');
+    expect(cellValues).toContain('Rosmery Sanchez');
+    expect(cellValues).toContain('TOTAL CASOS PENDIENTES');
   });
 });

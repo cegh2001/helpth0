@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import {
   aggregateExonerations,
+  parseExonerationTier,
   ExonerationRowItem,
 } from './exoneration-summary.aggregator';
 
@@ -61,7 +62,7 @@ export function appendExonerationExcelSummary(
         '',
         tier.tierLabel,
         tier.count,
-        tier.baseUsd > 0 ? tier.baseUsd : '',
+        tier.unitRateUsd > 0 ? tier.unitRateUsd : '',
         tier.exoneratedUsd > 0 ? tier.exoneratedUsd : '',
         tier.exoneratedBs > 0 ? tier.exoneratedBs : '',
         pct,
@@ -81,7 +82,7 @@ export function appendExonerationExcelSummary(
     '',
     'TOTAL A PAGAR POR LA CONGREGACIÓN',
     summary.totalExonCount,
-    summary.totalExonBaseUsd,
+    '',
     summary.totalExonUsd,
     summary.totalExonBs,
     exonTotalPct,
@@ -92,7 +93,7 @@ export function appendExonerationExcelSummary(
     pattern: 'solid',
     fgColor: { argb: 'FFFDE68A' },
   };
-  [4, 5, 6].forEach((cIdx) => {
+  [5, 6].forEach((cIdx) => {
     const cell = totalRow.getCell(cIdx);
     if (typeof cell.value === 'number') cell.numFmt = '#,##0.00';
   });
@@ -115,26 +116,42 @@ export function appendExonerationExcelSummary(
     fgColor: { argb: 'FFE2E8F0' },
   };
 
-  const directPatients = items.filter(
-    (i) =>
-      (i.amountPointBs + i.amountMobileBs + i.amountCashBs) > 0 ||
-      (i.amountUsd > 0 && i.exonerationPercent !== 100 && !i.status?.toUpperCase().includes('100%'))
-  ).length;
+  let directPatientsCount = 0;
+  let directUsd = 0;
+  let directBs = 0;
 
-  const directPatientsCount = directPatients > 0
-    ? directPatients
-    : Math.max(0, totals.totalCount - summary.totalExonCount);
+  for (const item of items) {
+    const parsed = parseExonerationTier(item);
+    const isFullExon = parsed.isExonerated && parsed.percent === 100;
+    const paidCajaBs = item.amountPointBs + item.amountMobileBs + item.amountCashBs;
 
-  const directUsd = items.reduce((sum, i) => {
-    if (i.exonerationPercent === 100 || i.status?.toUpperCase().includes('100%')) return sum;
-    return sum + (i.amountUsd > 0 ? i.amountUsd : 0);
-  }, 0);
+    if (isFullExon) {
+      continue;
+    }
 
-  const totalServiceBs = totals.totalFacturadoBs + summary.totalExonBs;
-  const totalServiceUsd = directUsd + summary.totalExonUsd;
+    const copayUsd = parsed.isExonerated
+      ? Math.max(0, Number((item.amountUsd - (parsed.percent === 67 || parsed.tierLabel.includes('$10') ? 10 : parsed.exoneratedUsd)).toFixed(2)))
+      : item.amountUsd;
+
+    const patientPaidBs = paidCajaBs > 0
+      ? paidCajaBs
+      : Math.max(0, Number((item.totalBs - parsed.exoneratedBs).toFixed(2)));
+
+    if (patientPaidBs > 0 || copayUsd > 0 || !parsed.isExonerated) {
+      directPatientsCount++;
+      directUsd += copayUsd;
+      directBs += patientPaidBs;
+    }
+  }
+
+  directUsd = Number(directUsd.toFixed(2));
+  directBs = Number(directBs.toFixed(2));
+
+  const totalServiceBs = Number((directBs + summary.totalExonBs).toFixed(2));
+  const totalServiceUsd = Number((directUsd + summary.totalExonUsd).toFixed(2));
 
   const directPct = totalServiceBs > 0
-    ? `${((totals.totalFacturadoBs / totalServiceBs) * 100).toFixed(1)}%`
+    ? `${((directBs / totalServiceBs) * 100).toFixed(1)}%`
     : '0.0%';
   const exonPct = totalServiceBs > 0
     ? `${((summary.totalExonBs / totalServiceBs) * 100).toFixed(1)}%`
@@ -145,7 +162,7 @@ export function appendExonerationExcelSummary(
     `Cobrado Directamente en Caja (${subjectPlural})`,
     directPatientsCount,
     directUsd > 0 ? directUsd : '',
-    totals.totalFacturadoBs,
+    directBs > 0 ? directBs : '',
     directPct,
   ]);
   [4, 5].forEach((cIdx) => {

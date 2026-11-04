@@ -189,6 +189,7 @@ export class ExcelJsConsultationExporter implements ConsultationExcelExporter {
 
       return {
         date: c.date,
+        patientName: c.patientName,
         specialty: c.specialty,
         amountPointBs: c.amountPointBs,
         amountMobileBs: c.amountMobileBs,
