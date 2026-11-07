@@ -4,10 +4,8 @@ import {
   ParseMedicalExamsResult,
   ParseMedicalExamsSummary,
 } from '@/core/application/ports/medical-exam-parser.port';
-import {
-  parseNumeric,
-  computeExoneration,
-} from './consultation-exoneration.calculator';
+import { parseNumeric } from './consultation-exoneration.calculator';
+import { resolveMedicalExamAmounts } from '@/core/application/use-cases/exams/medical-exam-rate.calculator';
 
 export function splitCsvLine(line: string): string[] {
   const result: string[] = [];
@@ -125,26 +123,19 @@ export function parseMedicalExamsFromCsv(csvText: string): ParseMedicalExamsResu
     const amountMobileBs = parseNumeric(parts[9]);
     const amountCashBs = parseNumeric(parts[10]);
     const bcvRate = parseNumeric(parts[11]);
-    let amountUsd = parseNumeric(parts[12]);
-    let totalBs = parseNumeric(parts[13]);
+    const amountUsd = parseNumeric(parts[12]);
+    const totalBs = parseNumeric(parts[13]);
     const observations = parts[14] || (parts[13] && isNaN(Number(parts[13])) ? parts[13] : null);
 
-    const paidBs = amountPointBs + amountMobileBs + amountCashBs;
-    if (paidBs > 0) {
-      if (totalBs <= 0) totalBs = paidBs;
-      if (amountUsd <= 0 && bcvRate > 0) {
-        amountUsd = Number((paidBs / bcvRate).toFixed(2));
-      }
-    } else if (amountUsd > 0 && bcvRate > 0 && totalBs <= 0) {
-      totalBs = Number((amountUsd * bcvRate).toFixed(2));
-    }
-
-    const { status, exonerationPercent, exoneratedAmountUsd } = computeExoneration(
-      observations,
-      amountUsd,
+    const resolved = resolveMedicalExamAmounts({
+      amountPointBs,
+      amountMobileBs,
+      amountCashBs,
       bcvRate,
-      paidBs
-    );
+      amountUsd,
+      totalBs,
+      observations,
+    });
 
     try {
       const item = MedicalExam.create({
@@ -159,11 +150,11 @@ export function parseMedicalExamsFromCsv(csvText: string): ParseMedicalExamsResu
         amountMobileBs,
         amountCashBs,
         bcvRate,
-        amountUsd,
-        totalBs,
-        status,
-        exonerationPercent,
-        exoneratedAmountUsd,
+        amountUsd: resolved.amountUsd,
+        totalBs: resolved.totalBs,
+        status: resolved.status,
+        exonerationPercent: resolved.exonerationPercent,
+        exoneratedAmountUsd: resolved.exoneratedAmountUsd,
         observations,
       });
 

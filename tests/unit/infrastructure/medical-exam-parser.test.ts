@@ -44,7 +44,9 @@ describe('Medical Exam Excel/CSV Parser', () => {
     expect(first.patientAddress).toBe('CARABALLEDA');
     expect(first.examName).toBeNull();
     expect(first.amountPointBs).toBe(37067.41);
-    expect(first.amountUsd).toBe(86.5);
+    expect(first.amountUsd).toBe(43.25);
+    expect(first.exoneratedAmountUsd).toBe(43.25);
+    expect(first.exonerationPercent).toBe(50);
     expect(first.status).toBe('EXONERADO 50%');
 
     const repeticion = result.exams[4];

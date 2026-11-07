@@ -4,6 +4,7 @@ import {
   MedicalExamParserPort,
   ParseMedicalExamsResult,
 } from '@/core/application/ports/medical-exam-parser.port';
+import { resolveMedicalExamAmounts } from './medical-exam-rate.calculator';
 
 export interface ImportMedicalExamsInput {
   csvContent?: string;
@@ -44,24 +45,21 @@ export class ImportMedicalExamsUseCase {
           const amountMobileBs = Number(item.amountMobileBs) || 0;
           const amountCashBs = Number(item.amountCashBs) || 0;
           const bcvRate = Number(item.bcvRate) || 0;
-          let amountUsd = Number(item.amountUsd) || 0;
-          let totalBs = Number(item.totalBs) || 0;
+          const amountUsd = Number(item.amountUsd) || 0;
+          const totalBs = Number(item.totalBs) || 0;
 
-          const paidBs = amountPointBs + amountMobileBs + amountCashBs;
-          if (paidBs > 0) {
-            if (totalBs <= 0) totalBs = paidBs;
-            if (amountUsd <= 0 && bcvRate > 0) {
-              amountUsd = Number((paidBs / bcvRate).toFixed(2));
-            }
-          } else if (amountUsd > 0 && bcvRate > 0 && totalBs <= 0) {
-            totalBs = Number((amountUsd * bcvRate).toFixed(2));
-          }
-
-          const percent = Math.max(0, Math.min(100, Number(item.exonerationPercent) || 0));
-          let exonUsd = Number(item.exoneratedAmountUsd) || 0;
-          if (percent > 0 && exonUsd === 0 && amountUsd > 0) {
-            exonUsd = Number(((amountUsd * percent) / 100).toFixed(2));
-          }
+          const resolved = resolveMedicalExamAmounts({
+            amountPointBs,
+            amountMobileBs,
+            amountCashBs,
+            bcvRate,
+            amountUsd,
+            totalBs,
+            exonerationPercent: item.exonerationPercent,
+            exoneratedAmountUsd: item.exoneratedAmountUsd,
+            status: item.status,
+            observations: item.observations,
+          });
 
           const entity = MedicalExam.create({
             id: item.id,
@@ -77,17 +75,11 @@ export class ImportMedicalExamsUseCase {
             amountMobileBs,
             amountCashBs,
             bcvRate,
-            amountUsd,
-            totalBs,
-            status: item.status
-              ? String(item.status).trim()
-              : percent === 100
-                ? 'EXONERADO 100%'
-                : percent > 0
-                  ? `EXONERADO ${percent}%`
-                  : 'COMPLETO',
-            exonerationPercent: percent,
-            exoneratedAmountUsd: exonUsd,
+            amountUsd: resolved.amountUsd,
+            totalBs: resolved.totalBs,
+            status: resolved.status,
+            exonerationPercent: resolved.exonerationPercent,
+            exoneratedAmountUsd: resolved.exoneratedAmountUsd,
             observations: item.observations ? String(item.observations).trim() : null,
             importHash: item.importHash,
             createdAt: item.createdAt ? new Date(item.createdAt) : undefined,

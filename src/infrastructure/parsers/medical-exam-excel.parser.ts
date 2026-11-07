@@ -6,10 +6,8 @@ import {
   ParseMedicalExamsResult,
   ParseMedicalExamsSummary,
 } from '@/core/application/ports/medical-exam-parser.port';
-import {
-  parseNumeric,
-  computeExoneration,
-} from './consultation-exoneration.calculator';
+import { parseNumeric } from './consultation-exoneration.calculator';
+import { resolveMedicalExamAmounts } from '@/core/application/use-cases/exams/medical-exam-rate.calculator';
 import {
   parseMedicalExamsFromCsv,
   buildMedicalExamsSummary,
@@ -109,7 +107,7 @@ export async function parseMedicalExamsFromBuffer(buffer: Buffer): Promise<Parse
     const amountMobileBs = parseNumeric(vals[10]);
     const amountCashBs = parseNumeric(vals[11]);
     const bcvRate = parseNumeric(vals[12]);
-    let amountUsd = parseNumeric(vals[13]);
+    const amountUsd = parseNumeric(vals[13]);
     const totalBsVal = vals[14];
     let totalBs = 0;
     if (totalBsVal && typeof totalBsVal === 'object' && 'result' in (totalBsVal as Record<string, unknown>)) {
@@ -121,22 +119,15 @@ export async function parseMedicalExamsFromBuffer(buffer: Buffer): Promise<Parse
     const obsVal = vals[15];
     const observations = obsVal ? String(obsVal).trim() : null;
 
-    const paidBs = amountPointBs + amountMobileBs + amountCashBs;
-    if (paidBs > 0) {
-      if (totalBs <= 0) totalBs = paidBs;
-      if (amountUsd <= 0 && bcvRate > 0) {
-        amountUsd = Number((paidBs / bcvRate).toFixed(2));
-      }
-    } else if (amountUsd > 0 && bcvRate > 0 && totalBs <= 0) {
-      totalBs = Number((amountUsd * bcvRate).toFixed(2));
-    }
-
-    const { status, exonerationPercent, exoneratedAmountUsd } = computeExoneration(
-      observations,
-      amountUsd,
+    const resolved = resolveMedicalExamAmounts({
+      amountPointBs,
+      amountMobileBs,
+      amountCashBs,
       bcvRate,
-      paidBs
-    );
+      amountUsd,
+      totalBs,
+      observations,
+    });
 
     try {
       const item = MedicalExam.create({
@@ -151,11 +142,11 @@ export async function parseMedicalExamsFromBuffer(buffer: Buffer): Promise<Parse
         amountMobileBs,
         amountCashBs,
         bcvRate,
-        amountUsd,
-        totalBs,
-        status,
-        exonerationPercent,
-        exoneratedAmountUsd,
+        amountUsd: resolved.amountUsd,
+        totalBs: resolved.totalBs,
+        status: resolved.status,
+        exonerationPercent: resolved.exonerationPercent,
+        exoneratedAmountUsd: resolved.exoneratedAmountUsd,
         observations,
       });
 

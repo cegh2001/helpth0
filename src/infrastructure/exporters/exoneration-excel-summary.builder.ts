@@ -130,7 +130,7 @@ export function appendExonerationExcelSummary(
     }
 
     const copayUsd = parsed.isExonerated
-      ? Math.max(0, Number((item.amountUsd - (parsed.percent === 67 || parsed.tierLabel.includes('$10') ? 10 : parsed.exoneratedUsd)).toFixed(2)))
+      ? Number(Math.max(0, parsed.baseUsd - parsed.exoneratedUsd).toFixed(2))
       : item.amountUsd;
 
     const patientPaidBs = paidCajaBs > 0

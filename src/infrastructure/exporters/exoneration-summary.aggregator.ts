@@ -80,8 +80,15 @@ export function parseExonerationTier(
 
   if (item.exoneratedAmountUsd != null && item.exoneratedAmountUsd > 0) {
     exoneratedUsd = item.exoneratedAmountUsd;
-    if (baseUsd < exoneratedUsd && percent > 0) {
-      baseUsd = Number(((exoneratedUsd * 100) / percent).toFixed(2));
+    if (percent === 100) {
+      baseUsd = Math.max(baseUsd, exoneratedUsd);
+    } else if (percent > 0) {
+      const calculatedBase = Number(((exoneratedUsd * 100) / percent).toFixed(2));
+      if (item.amountUsd > 0 && item.amountUsd < calculatedBase) {
+        baseUsd = Number((item.amountUsd + exoneratedUsd).toFixed(2));
+      } else {
+        baseUsd = Math.max(baseUsd, calculatedBase);
+      }
     }
   } else if (baseUsd > 0) {
     exoneratedUsd = Number(((baseUsd * percent) / 100).toFixed(2));
@@ -142,6 +149,11 @@ export function aggregateExonerations(items: ExonerationRowItem[]): ExonerationA
     cur.baseUsd = Number((cur.baseUsd + parsed.baseUsd).toFixed(2));
     cur.exoneratedUsd = Number((cur.exoneratedUsd + parsed.exoneratedUsd).toFixed(2));
     cur.exoneratedBs = Number((cur.exoneratedBs + parsed.exoneratedBs).toFixed(2));
+    if (parsed.tierLabel.includes('$10') || parsed.percent === 67) {
+      cur.unitRateUsd = 10;
+    } else {
+      cur.unitRateUsd = Number((cur.baseUsd / cur.count).toFixed(2));
+    }
     tierMap.set(parsed.tierLabel, cur);
 
     totalExonCount++;
