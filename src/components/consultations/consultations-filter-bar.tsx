@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Search,
   RefreshCw,
@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
+import { buildDatePresets, PresetId } from '@/lib/date-window';
 
 export interface FilterState {
   search: string;
@@ -31,6 +32,7 @@ interface Props {
   isPreviewLoading: boolean;
   totalFiltered: number;
   totalAll: number;
+  referenceDate?: string;
 }
 
 export function ConsultationsFilterBar({
@@ -43,54 +45,20 @@ export function ConsultationsFilterBar({
   isPreviewLoading,
   totalFiltered,
   totalAll,
+  referenceDate,
 }: Props) {
-  const handleApplyPreset = (preset: 'month' | 'sem1' | 'sem2' | 'sem3' | 'sem4' | 'all') => {
-    if (preset === 'all') {
-      onChange((prev) => ({
-        ...prev,
-        startDate: '',
-        endDate: '',
-        periodLabel: 'Todo el Histórico',
-      }));
-      return;
-    }
+  const { window, getPreset } = useMemo(
+    () => buildDatePresets(referenceDate),
+    [referenceDate]
+  );
 
-    const baseYear = 2026;
-    const baseMonth = 10;
-    const mStr = String(baseMonth).padStart(2, '0');
-    const lastDay = 31;
-
-    let start = '';
-    let end = '';
-    let label = '';
-
-    if (preset === 'month') {
-      start = `${baseYear}-${mStr}-01`;
-      end = `${baseYear}-${mStr}-${lastDay}`;
-      label = 'Mes Completo (Octubre 2026)';
-    } else if (preset === 'sem1') {
-      start = `${baseYear}-${mStr}-01`;
-      end = `${baseYear}-${mStr}-07`;
-      label = 'Semana 1 (1-7 Oct)';
-    } else if (preset === 'sem2') {
-      start = `${baseYear}-${mStr}-08`;
-      end = `${baseYear}-${mStr}-14`;
-      label = 'Semana 2 (8-14 Oct)';
-    } else if (preset === 'sem3') {
-      start = `${baseYear}-${mStr}-15`;
-      end = `${baseYear}-${mStr}-21`;
-      label = 'Semana 3 (15-21 Oct)';
-    } else if (preset === 'sem4') {
-      start = `${baseYear}-${mStr}-22`;
-      end = `${baseYear}-${mStr}-${lastDay}`;
-      label = 'Semana 4 (22+ Oct)';
-    }
-
+  const handleApplyPreset = (preset: PresetId) => {
+    const p = getPreset(preset);
     onChange((prev) => ({
       ...prev,
-      startDate: start,
-      endDate: end,
-      periodLabel: label,
+      startDate: p.startDate,
+      endDate: p.endDate,
+      periodLabel: p.tableLabel,
     }));
   };
 
@@ -212,7 +180,9 @@ export function ConsultationsFilterBar({
         </div>
 
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-400 mr-1 hidden sm:inline text-[11px]">Semanas de Octubre:</span>
+          <span className="text-slate-400 mr-1 hidden sm:inline text-[11px]">
+            Semanas de {window.monthName}:
+          </span>
           <button
             type="button"
             onClick={() => handleApplyPreset('month')}

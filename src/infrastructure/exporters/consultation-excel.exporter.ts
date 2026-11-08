@@ -12,7 +12,7 @@ import {
 } from './standard-excel-summary.builder';
 
 export class ExcelJsConsultationExporter implements ConsultationExcelExporter {
-  async exportToExcel(consultations: Consultation[], titlePeriod = 'OCTUBRE 2026'): Promise<Buffer> {
+  async exportToExcel(consultations: Consultation[], titlePeriod = 'HISTÓRICO COMPLETO'): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'helpth0';
     workbook.created = new Date();

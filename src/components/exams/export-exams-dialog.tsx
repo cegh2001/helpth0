@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
+import { buildDatePresets } from '@/lib/date-window';
 import type { MedicalExamItem } from './medical-exam-item';
 
 interface Props {
@@ -24,16 +25,18 @@ interface Props {
   defaultPeriod?: string;
   onConfirmExport: (range: { startDate?: string; endDate?: string; period: string }) => void;
   isExporting: boolean;
+  referenceDate?: string;
 }
 
 interface FormProps {
   exams: MedicalExamItem[];
   defaultStartDate: string;
   defaultEndDate: string;
-  defaultPeriod: string;
+  defaultPeriod?: string;
   onConfirmExport: (range: { startDate?: string; endDate?: string; period: string }) => void;
   onClose: () => void;
   isExporting: boolean;
+  referenceDate?: string;
 }
 
 function ExportDialogForm({
@@ -44,10 +47,20 @@ function ExportDialogForm({
   onConfirmExport,
   onClose,
   isExporting,
+  referenceDate,
 }: FormProps) {
+  const { window, getPreset } = useMemo(
+    () => buildDatePresets(referenceDate),
+    [referenceDate]
+  );
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
-  const [periodTitle, setPeriodTitle] = useState(defaultPeriod || 'OCTUBRE 2026');
+  const [periodTitle, setPeriodTitle] = useState(() => {
+    if (defaultPeriod && defaultPeriod !== 'Todo el Histórico') {
+      return defaultPeriod;
+    }
+    return window.periodTitle;
+  });
 
   const matchingCount = useMemo(() => {
     return exams.filter((c) => {
@@ -68,6 +81,84 @@ function ExportDialogForm({
   return (
     <>
       <div className="space-y-4 py-2">
+        {/* Atajos Rápidos */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold text-slate-600">Atajos rápidos:</Label>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                const p = getPreset('month');
+                setStartDate(p.startDate);
+                setEndDate(p.endDate);
+                setPeriodTitle(p.periodTitle);
+              }}
+              className="px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
+            >
+              {getPreset('month').buttonLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const p = getPreset('sem1');
+                setStartDate(p.startDate);
+                setEndDate(p.endDate);
+                setPeriodTitle(p.periodTitle);
+              }}
+              className="px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+            >
+              Sem. 1 (1-7)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const p = getPreset('sem2');
+                setStartDate(p.startDate);
+                setEndDate(p.endDate);
+                setPeriodTitle(p.periodTitle);
+              }}
+              className="px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+            >
+              Sem. 2 (8-14)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const p = getPreset('sem3');
+                setStartDate(p.startDate);
+                setEndDate(p.endDate);
+                setPeriodTitle(p.periodTitle);
+              }}
+              className="px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+            >
+              Sem. 3 (15-21)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const p = getPreset('sem4');
+                setStartDate(p.startDate);
+                setEndDate(p.endDate);
+                setPeriodTitle(p.periodTitle);
+              }}
+              className="px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+            >
+              Sem. 4 (22+)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+                setPeriodTitle('HISTÓRICO COMPLETO');
+              }}
+              className="px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition cursor-pointer"
+            >
+              Todo
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">Fecha Inicial</Label>
@@ -87,7 +178,7 @@ function ExportDialogForm({
             type="text"
             value={periodTitle}
             onChange={(e) => setPeriodTitle(e.target.value)}
-            placeholder="Ej: SEPTIEMBRE / OCTUBRE 2026"
+            placeholder={`Ej: ${window.periodTitle}`}
             className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
           />
         </div>
@@ -139,9 +230,10 @@ export function ExportExamsDialog({
   exams,
   defaultStartDate = '',
   defaultEndDate = '',
-  defaultPeriod = 'OCTUBRE 2026',
+  defaultPeriod,
   onConfirmExport,
   isExporting,
+  referenceDate,
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,6 +257,7 @@ export function ExportExamsDialog({
             onConfirmExport={onConfirmExport}
             onClose={() => onOpenChange(false)}
             isExporting={isExporting}
+            referenceDate={referenceDate}
           />
         )}
       </DialogContent>

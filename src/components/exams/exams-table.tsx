@@ -11,6 +11,7 @@ import { ExportExamsDialog } from './export-exams-dialog';
 import { DataPagination } from '@/components/ui/data-pagination';
 import { clampPage, DEFAULT_PAGE_SIZE } from '@/components/ui/pagination-range';
 import { formatDisplayDate } from '@/lib/date-utils';
+import { getLatestDate } from '@/lib/date-window';
 import type { MedicalExamItem } from './medical-exam-item';
 
 interface Props {
@@ -101,6 +102,8 @@ export function ExamsTable({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = DEFAULT_PAGE_SIZE;
 
+  const latestDate = useMemo(() => getLatestDate(exams), [exams]);
+
   const filtered = useMemo(() => {
     return exams.filter((c) => {
       if (filter.startDate && c.date < filter.startDate) return false;
@@ -162,6 +165,7 @@ export function ExamsTable({
         isPreviewLoading={isPreviewLoading}
         totalFiltered={filtered.length}
         totalAll={exams.length}
+        referenceDate={latestDate}
       />
 
       {/* Diálogo Modal para Descargar Excel con Rango y DatePickers */}
@@ -174,6 +178,7 @@ export function ExamsTable({
         defaultPeriod={filter.periodLabel}
         onConfirmExport={onExport}
         isExporting={isExporting}
+        referenceDate={latestDate}
       />
 
       {/* Métricas Resumidas Reactivas al Filtro */}

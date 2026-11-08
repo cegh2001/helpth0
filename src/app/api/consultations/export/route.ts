@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate') || undefined;
     const specialty = searchParams.get('specialty') || undefined;
     const doctorName = searchParams.get('doctorName') || undefined;
-    const titlePeriod = searchParams.get('period') || 'OCTUBRE 2026';
+    const titlePeriod = searchParams.get('period') || 'HISTÓRICO COMPLETO';
 
     const buffer = await exportConsultationsUseCase.execute(
       {

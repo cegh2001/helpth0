@@ -8,7 +8,7 @@ export { type MedicalExamExporterPort };
 export type MedicalExamExcelExporter = MedicalExamExporterPort;
 
 export class ExcelJsMedicalExamExporter implements MedicalExamExcelExporter {
-  async exportToExcel(exams: MedicalExam[], titlePeriod = 'OCTUBRE 2026'): Promise<Buffer> {
+  async exportToExcel(exams: MedicalExam[], titlePeriod = 'HISTÓRICO COMPLETO'): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'helpth0';
     workbook.created = new Date();

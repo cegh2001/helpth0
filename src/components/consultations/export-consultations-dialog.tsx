@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
+import { buildDatePresets, PresetId } from '@/lib/date-window';
 import type { ConsultationItem } from './consultation-item';
 
 interface Props {
@@ -24,16 +25,18 @@ interface Props {
   defaultPeriod?: string;
   onConfirmExport: (range: { startDate?: string; endDate?: string; period: string }) => void;
   isExporting: boolean;
+  referenceDate?: string;
 }
 
 interface FormProps {
   consultations: ConsultationItem[];
   defaultStartDate: string;
   defaultEndDate: string;
-  defaultPeriod: string;
+  defaultPeriod?: string;
   onConfirmExport: (range: { startDate?: string; endDate?: string; period: string }) => void;
   onClose: () => void;
   isExporting: boolean;
+  referenceDate?: string;
 }
 
 function ExportDialogForm({
@@ -44,10 +47,20 @@ function ExportDialogForm({
   onConfirmExport,
   onClose,
   isExporting,
+  referenceDate,
 }: FormProps) {
+  const { window, getPreset } = useMemo(
+    () => buildDatePresets(referenceDate),
+    [referenceDate]
+  );
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
-  const [periodTitle, setPeriodTitle] = useState(defaultPeriod || 'OCTUBRE 2026');
+  const [periodTitle, setPeriodTitle] = useState(() => {
+    if (defaultPeriod && defaultPeriod !== 'Todo el Histórico') {
+      return defaultPeriod;
+    }
+    return window.periodTitle;
+  });
 
   // Count matching consultations in selected range
   const matchingCount = useMemo(() => {
@@ -58,40 +71,11 @@ function ExportDialogForm({
     }).length;
   }, [consultations, startDate, endDate]);
 
-  const handleApplyPreset = (preset: 'month' | 'sem1' | 'sem2' | 'sem3' | 'sem4' | 'all') => {
-    if (preset === 'all') {
-      setStartDate('');
-      setEndDate('');
-      setPeriodTitle('HISTORICO COMPLETO');
-      return;
-    }
-
-    const baseYear = 2026;
-    const baseMonth = 10;
-    const mStr = String(baseMonth).padStart(2, '0');
-    const lastDay = 31;
-
-    if (preset === 'month') {
-      setStartDate(`${baseYear}-${mStr}-01`);
-      setEndDate(`${baseYear}-${mStr}-${lastDay}`);
-      setPeriodTitle('OCTUBRE 2026');
-    } else if (preset === 'sem1') {
-      setStartDate(`${baseYear}-${mStr}-01`);
-      setEndDate(`${baseYear}-${mStr}-07`);
-      setPeriodTitle('SEMANA 1 OCTUBRE 2026');
-    } else if (preset === 'sem2') {
-      setStartDate(`${baseYear}-${mStr}-08`);
-      setEndDate(`${baseYear}-${mStr}-14`);
-      setPeriodTitle('SEMANA 2 OCTUBRE 2026');
-    } else if (preset === 'sem3') {
-      setStartDate(`${baseYear}-${mStr}-15`);
-      setEndDate(`${baseYear}-${mStr}-21`);
-      setPeriodTitle('SEMANA 3 OCTUBRE 2026');
-    } else if (preset === 'sem4') {
-      setStartDate(`${baseYear}-${mStr}-22`);
-      setEndDate(`${baseYear}-${mStr}-${lastDay}`);
-      setPeriodTitle('SEMANA 4 OCTUBRE 2026');
-    }
+  const handleApplyPreset = (preset: PresetId) => {
+    const p = getPreset(preset);
+    setStartDate(p.startDate);
+    setEndDate(p.endDate);
+    setPeriodTitle(p.periodTitle);
   };
 
   const handleDownload = () => {
@@ -128,7 +112,7 @@ function ExportDialogForm({
               onClick={() => handleApplyPreset('month')}
               className="px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer"
             >
-              Mes Completo (Oct 2026)
+              {getPreset('month').buttonLabel}
             </button>
             <button
               type="button"
@@ -242,9 +226,10 @@ export function ExportConsultationsDialog({
   consultations,
   defaultStartDate = '',
   defaultEndDate = '',
-  defaultPeriod = 'OCTUBRE 2026',
+  defaultPeriod,
   onConfirmExport,
   isExporting,
+  referenceDate,
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -258,6 +243,7 @@ export function ExportConsultationsDialog({
             onConfirmExport={onConfirmExport}
             onClose={() => onOpenChange(false)}
             isExporting={isExporting}
+            referenceDate={referenceDate}
           />
         )}
       </DialogContent>

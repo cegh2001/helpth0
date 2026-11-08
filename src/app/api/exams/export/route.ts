@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;
     const status = searchParams.get('status') || undefined;
-    const titlePeriod = searchParams.get('period') || 'OCTUBRE 2026';
+    const titlePeriod = searchParams.get('period') || 'HISTÓRICO COMPLETO';
 
     const buffer = await exportMedicalExamsUseCase.execute(
       {

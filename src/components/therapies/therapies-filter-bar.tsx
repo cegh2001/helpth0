@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Search,
   RefreshCw,
@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
+import { buildDatePresets, PresetId } from '@/lib/date-window';
 
 export interface TherapyFilterState {
   search: string;
@@ -34,61 +35,6 @@ interface Props {
   referenceDate?: string;
 }
 
-const MONTH_LABELS = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-];
-
-interface MonthWindow {
-  label: string;
-  start: string;
-  lastDay: number;
-}
-
-function resolveMonthWindow(referenceDate?: string): MonthWindow {
-  const parsed =
-    referenceDate && /^\d{4}-\d{2}-\d{2}$/.test(referenceDate)
-      ? new Date(`${referenceDate}T00:00:00.000Z`)
-      : new Date();
-
-  const year = parsed.getUTCFullYear();
-  const month = parsed.getUTCMonth() + 1;
-  const monthStr = String(month).padStart(2, '0');
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-
-  return {
-    label: MONTH_LABELS[month - 1],
-    start: `${year}-${monthStr}-01`,
-    lastDay,
-  };
-}
-
-function buildMonthWindow(label: string, yearMonthPrefix: string, lastDay: number) {
-  return {
-    month: {
-      start: `${yearMonthPrefix}-01`,
-      end: `${yearMonthPrefix}-${String(lastDay).padStart(2, '0')}`,
-      label: `Mes Completo (${label})`,
-    },
-    weeks: [
-      { start: `${yearMonthPrefix}-01`, end: `${yearMonthPrefix}-07`, label: 'Semana 1 (1-7)' },
-      { start: `${yearMonthPrefix}-08`, end: `${yearMonthPrefix}-14`, label: 'Semana 2 (8-14)' },
-      { start: `${yearMonthPrefix}-15`, end: `${yearMonthPrefix}-21`, label: 'Semana 3 (15-21)' },
-      { start: `${yearMonthPrefix}-22`, end: `${yearMonthPrefix}-${String(lastDay).padStart(2, '0')}`, label: 'Semana 4 (22+)' },
-    ],
-  };
-}
-
 export function TherapiesFilterBar({
   filter,
   onChange,
@@ -101,16 +47,19 @@ export function TherapiesFilterBar({
   totalAll,
   referenceDate,
 }: Props) {
-  const window = resolveMonthWindow(referenceDate);
-  const yearMonthPrefix = window.start.slice(0, 7);
-  const presets = buildMonthWindow(window.label, yearMonthPrefix, window.lastDay);
+  const { window, getPreset } = useMemo(
+    () => buildDatePresets(referenceDate),
+    [referenceDate]
+  );
 
-  const applyRange = (startDate: string, endDate: string, label: string) => {
-    onChange((prev) => ({ ...prev, startDate, endDate, periodLabel: label }));
-  };
-
-  const clearDates = () => {
-    onChange((prev) => ({ ...prev, startDate: '', endDate: '', periodLabel: 'Todo el Histórico' }));
+  const handleApplyPreset = (preset: PresetId) => {
+    const p = getPreset(preset);
+    onChange((prev) => ({
+      ...prev,
+      startDate: p.startDate,
+      endDate: p.endDate,
+      periodLabel: p.tableLabel,
+    }));
   };
 
   const hasDateFilter = Boolean(filter.startDate || filter.endDate);
@@ -227,28 +176,46 @@ export function TherapiesFilterBar({
 
         <div className="flex items-center gap-1.5">
           <span className="text-slate-400 mr-1 hidden sm:inline text-[11px]">
-            Semanas de {window.label}:
+            Semanas de {window.monthName}:
           </span>
           <button
             type="button"
-            onClick={() => applyRange(presets.month.start, presets.month.end, presets.month.label)}
+            onClick={() => handleApplyPreset('month')}
             className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-medium transition cursor-pointer text-[10px]"
           >
             Mes Completo
           </button>
-          {presets.weeks.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => applyRange(preset.start, preset.end, preset.label)}
-              className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-medium transition cursor-pointer text-[10px]"
-            >
-              {preset.label.replace('Semana', 'Sem.')}
-            </button>
-          ))}
           <button
             type="button"
-            onClick={clearDates}
+            onClick={() => handleApplyPreset('sem1')}
+            className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-medium transition cursor-pointer text-[10px]"
+          >
+            Sem. 1 (1-7)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleApplyPreset('sem2')}
+            className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-medium transition cursor-pointer text-[10px]"
+          >
+            Sem. 2 (8-14)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleApplyPreset('sem3')}
+            className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-medium transition cursor-pointer text-[10px]"
+          >
+            Sem. 3 (15-21)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleApplyPreset('sem4')}
+            className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-medium transition cursor-pointer text-[10px]"
+          >
+            Sem. 4 (22+)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleApplyPreset('all')}
             className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 font-medium transition cursor-pointer text-[10px]"
           >
             Ver Todo

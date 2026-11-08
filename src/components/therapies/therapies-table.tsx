@@ -8,6 +8,7 @@ import { ExportTherapiesDialog } from './export-therapies-dialog';
 import { DataPagination } from '@/components/ui/data-pagination';
 import { clampPage, DEFAULT_PAGE_SIZE } from '@/components/ui/pagination-range';
 import { formatDisplayDate } from '@/lib/date-utils';
+import { getLatestDate } from '@/lib/date-window';
 import type { TherapySessionItem } from './therapy-session-item';
 
 interface Props {
@@ -82,10 +83,7 @@ export function TherapiesTable({
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const pageSize = DEFAULT_PAGE_SIZE;
 
-  const latestDate = useMemo(() => {
-    if (therapies.length === 0) return undefined;
-    return therapies.reduce((max, item) => (item.date > max ? item.date : max), '');
-  }, [therapies]);
+  const latestDate = useMemo(() => getLatestDate(therapies), [therapies]);
 
   const filtered = useMemo(() => {
     const query = filter.search.toLowerCase().trim();
@@ -159,6 +157,7 @@ export function TherapiesTable({
         defaultPeriod={filter.periodLabel === 'Todo el Histórico' ? 'TODO EL HISTÓRICO' : filter.periodLabel}
         onConfirmExport={onExport}
         isExporting={isExporting}
+        referenceDate={latestDate}
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

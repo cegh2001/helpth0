@@ -84,7 +84,7 @@ function applyMoneyFormat(row: ExcelJS.Row, columns: number[]): void {
 export class ExcelJsTherapyExporter implements TherapyExcelExporter {
   async exportToExcel(
     sessions: TherapySession[],
-    titlePeriod = 'OCTUBRE 2026'
+    titlePeriod = 'HISTÓRICO COMPLETO'
   ): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'helpth0';

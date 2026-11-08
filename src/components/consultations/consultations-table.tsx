@@ -11,6 +11,7 @@ import { ExportConsultationsDialog } from './export-consultations-dialog';
 import { DataPagination } from '@/components/ui/data-pagination';
 import { clampPage, DEFAULT_PAGE_SIZE } from '@/components/ui/pagination-range';
 import { formatDisplayDate } from '@/lib/date-utils';
+import { getLatestDate } from '@/lib/date-window';
 import type { ConsultationItem } from './consultation-item';
 
 interface Props {
@@ -101,6 +102,8 @@ export function ConsultationsTable({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = DEFAULT_PAGE_SIZE;
 
+  const latestDate = useMemo(() => getLatestDate(consultations), [consultations]);
+
   const filtered = useMemo(() => {
     return consultations.filter((c) => {
       if (filter.startDate && c.date < filter.startDate) return false;
@@ -154,6 +157,7 @@ export function ConsultationsTable({
         isPreviewLoading={isPreviewLoading}
         totalFiltered={filtered.length}
         totalAll={consultations.length}
+        referenceDate={latestDate}
       />
 
       {/* Diálogo Modal para Descargar Excel con Rango y DatePickers */}
@@ -166,6 +170,7 @@ export function ConsultationsTable({
         defaultPeriod={filter.periodLabel}
         onConfirmExport={onExport}
         isExporting={isExporting}
+        referenceDate={latestDate}
       />
 
       {/* Métricas Resumidas Reactivas al Filtro */}

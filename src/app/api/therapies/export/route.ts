@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const therapistName = searchParams.get('therapistName') || undefined;
     const specialty = searchParams.get('specialty') || undefined;
     const status = searchParams.get('status') || undefined;
-    const titlePeriod = searchParams.get('period') || 'OCTUBRE 2026';
+    const titlePeriod = searchParams.get('period') || 'HISTÓRICO COMPLETO';
 
     const buffer = await exportTherapiesUseCase.execute(
       { startDate, endDate, therapistName, specialty, status },
