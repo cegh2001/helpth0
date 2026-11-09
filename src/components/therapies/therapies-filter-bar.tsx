@@ -111,7 +111,7 @@ export function TherapiesFilterBar({
             {hasDateFilter && (
               <button
                 type="button"
-                onClick={clearDates}
+                onClick={() => handleApplyPreset('all')}
                 title="Limpiar fechas"
                 className="text-slate-400 hover:text-slate-700 p-1 rounded-md cursor-pointer"
               >
