@@ -39,7 +39,7 @@ export function appendExonerationExcelSummary(
     '',
     'Condición de Exoneración',
     `${subjectPlural} Exonerados`,
-    'Tarifa Base Ref. ($)',
+    'Tarifa Base ($)',
     'Total Exonerado ($)',
     'Total Exonerado (Bs)',
     '% del Total Casos',
