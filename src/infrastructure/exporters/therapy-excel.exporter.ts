@@ -96,7 +96,7 @@ export class ExcelJsTherapyExporter implements TherapyExcelExporter {
 
     sheet.columns = [
       { key: 'index', width: 6 },
-      { key: 'date', width: 13 },
+      { key: 'date', width: 38 },
       { key: 'therapist', width: 28 },
       { key: 'specialty', width: 24 },
       { key: 'day', width: 14 },

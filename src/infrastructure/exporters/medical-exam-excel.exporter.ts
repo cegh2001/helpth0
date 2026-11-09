@@ -20,7 +20,7 @@ export class ExcelJsMedicalExamExporter implements MedicalExamExcelExporter {
     // 1. Column Definitions
     sheet.columns = [
       { key: 'index', width: 6 },
-      { key: 'date', width: 13 },
+      { key: 'date', width: 38 },
       { key: 'name', width: 28 },
       { key: 'cedula', width: 14 },
       { key: 'birthDate', width: 18 },

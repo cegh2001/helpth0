@@ -37,12 +37,18 @@ export function formatDisplayDate(dateStr: string | null | undefined): string {
 export function normalizeToIsoDate(val: unknown): string {
   if (!val) return '';
   if (val instanceof Date) {
-    return val.toISOString().slice(0, 10);
+    return isNaN(val.getTime()) ? '' : val.toISOString().slice(0, 10);
   }
   const str = String(val).trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
-    return str.slice(0, 10);
+  // Match YYYY-MM-DD or YYYY/MM/DD (allowing 1 or 2 digits, with optional trailing text/time)
+  const ymdMatch = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/.exec(str);
+  if (ymdMatch) {
+    const year = ymdMatch[1];
+    const month = ymdMatch[2].padStart(2, '0');
+    const day = ymdMatch[3].padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
+  // Match DD/MM/YYYY or DD-MM-YYYY (allowing 1 or 2 digits, with optional trailing text/time)
   const dmyMatch = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/.exec(str);
   if (dmyMatch) {
     const day = dmyMatch[1].padStart(2, '0');

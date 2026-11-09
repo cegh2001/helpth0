@@ -15,8 +15,17 @@ export function appendExonerationExcelSummary(
   sheet: ExcelJS.Worksheet,
   items: ExonerationRowItem[],
   subjectPlural: string,
-  totals: { totalCount: number; totalFacturadoBs: number }
+  totals: { totalCount: number; totalFacturadoBs: number },
+  options?: { showTarifaBase?: boolean }
 ): void {
+  const showTarifaBase = options?.showTarifaBase ?? true;
+
+  // Ensure Column B is wide enough for descriptive labels like "Aporte Fijo Congregación ($10)"
+  const colB = sheet.getColumn(2);
+  if ((colB.width ?? 0) < 38) {
+    colB.width = 38;
+  }
+
   sheet.addRow([]);
   sheet.addRow([]);
 
@@ -39,7 +48,7 @@ export function appendExonerationExcelSummary(
     '',
     'Condición de Exoneración',
     `${subjectPlural} Exonerados`,
-    'Tarifa Base ($)',
+    ...(showTarifaBase ? ['Tarifa Base ($)'] : []),
     'Total ($)',
     'Total (Bs)',
     '% del Total Casos',
@@ -52,7 +61,15 @@ export function appendExonerationExcelSummary(
   };
 
   if (summary.tiers.length === 0) {
-    sheet.addRow(['', 'Sin casos exonerados registrados en este período', 0, '', '', '', '0.0%']);
+    sheet.addRow([
+      '',
+      'Sin casos exonerados registrados en este período',
+      0,
+      ...(showTarifaBase ? [''] : []),
+      '',
+      '',
+      '0.0%',
+    ]);
   } else {
     for (const tier of summary.tiers) {
       const pct = totals.totalCount > 0
@@ -62,12 +79,13 @@ export function appendExonerationExcelSummary(
         '',
         tier.tierLabel,
         tier.count,
-        tier.unitRateUsd > 0 ? tier.unitRateUsd : '',
+        ...(showTarifaBase ? [tier.unitRateUsd > 0 ? tier.unitRateUsd : ''] : []),
         tier.exoneratedUsd > 0 ? tier.exoneratedUsd : '',
         tier.exoneratedBs > 0 ? tier.exoneratedBs : '',
         pct,
       ]);
-      [4, 5, 6].forEach((cIdx) => {
+      const currencyCols = showTarifaBase ? [4, 5, 6] : [4, 5];
+      currencyCols.forEach((cIdx) => {
         const cell = row.getCell(cIdx);
         if (typeof cell.value === 'number') cell.numFmt = '#,##0.00';
       });
@@ -82,7 +100,7 @@ export function appendExonerationExcelSummary(
     '',
     'TOTAL A PAGAR POR LA CONGREGACIÓN',
     summary.totalExonCount,
-    '',
+    ...(showTarifaBase ? [''] : []),
     summary.totalExonUsd,
     summary.totalExonBs,
     exonTotalPct,
@@ -93,7 +111,8 @@ export function appendExonerationExcelSummary(
     pattern: 'solid',
     fgColor: { argb: 'FFFDE68A' },
   };
-  [5, 6].forEach((cIdx) => {
+  const totalCurrencyCols = showTarifaBase ? [5, 6] : [4, 5];
+  totalCurrencyCols.forEach((cIdx) => {
     const cell = totalRow.getCell(cIdx);
     if (typeof cell.value === 'number') cell.numFmt = '#,##0.00';
   });

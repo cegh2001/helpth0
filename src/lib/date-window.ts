@@ -1,3 +1,5 @@
+import { normalizeToIsoDate } from '@/lib/date-utils';
+
 /**
  * Canonical Spanish month names for UI display and export period titles.
  */
@@ -61,14 +63,14 @@ export interface DatePresetsConfig {
 }
 
 /**
- * Resolves the calendar month window for a given ISO date (YYYY-MM-DD),
+ * Resolves the calendar month window for a given reference date (any valid date format),
  * falling back to the current system date if omitted or invalid.
  */
 export function resolveMonthWindow(referenceDate?: string): MonthWindow {
-  const parsed =
-    referenceDate && /^\d{4}-\d{2}-\d{2}$/.test(referenceDate)
-      ? new Date(`${referenceDate}T00:00:00.000Z`)
-      : new Date();
+  const iso = normalizeToIsoDate(referenceDate);
+  const parsed = iso
+    ? new Date(`${iso}T00:00:00.000Z`)
+    : new Date();
 
   const year = parsed.getUTCFullYear();
   const month = parsed.getUTCMonth() + 1;
@@ -167,19 +169,23 @@ export function buildDatePresets(referenceDate?: string): DatePresetsConfig {
 }
 
 /**
- * Extracts the latest ISO date string (YYYY-MM-DD) from a collection of records.
+ * Extracts the latest canonical ISO date string (YYYY-MM-DD) from a collection of records or dates.
  */
 export function getLatestDate(
-  items: Array<{ date: string } | string | undefined | null>
+  items: Array<{ date?: unknown } | unknown>
 ): string | undefined {
   let max: string | undefined;
 
   for (const item of items) {
     if (!item) continue;
-    const date = typeof item === 'string' ? item : item.date;
-    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      if (!max || date > max) {
-        max = date;
+    const rawDate =
+      typeof item === 'object' && item !== null && 'date' in item
+        ? (item as { date?: unknown }).date
+        : item;
+    const isoDate = normalizeToIsoDate(rawDate);
+    if (isoDate) {
+      if (!max || isoDate > max) {
+        max = isoDate;
       }
     }
   }

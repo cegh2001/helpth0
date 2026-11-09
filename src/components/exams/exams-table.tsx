@@ -172,7 +172,7 @@ export function ExamsTable({
       <ExportExamsDialog
         open={isExportDialogOpen}
         onOpenChange={setIsExportDialogOpen}
-        exams={filtered}
+        exams={exams}
         defaultStartDate={filter.startDate}
         defaultEndDate={filter.endDate}
         defaultPeriod={filter.periodLabel}

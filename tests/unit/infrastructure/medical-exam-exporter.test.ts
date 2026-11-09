@@ -50,6 +50,7 @@ describe('ExcelJsMedicalExamExporter', () => {
     expect(sheet?.getRow(2).getCell(5).value).toBe('28/03/1973');
     expect(sheet?.getRow(3).getCell(2).value).toBe('29/09/2026');
     expect(sheet?.getRow(3).getCell(5).value).toBe('24/04/2010');
+    expect(sheet?.getColumn(2).width).toBeGreaterThanOrEqual(38);
 
     const cellValues: string[] = [];
     sheet?.eachRow((row) => {
@@ -62,5 +63,7 @@ describe('ExcelJsMedicalExamExporter', () => {
     expect(cellValues).toContain('TOTAL A PAGAR POR LA CONGREGACIÓN');
     expect(cellValues).toContain('CONSOLIDADO GENERAL: INGRESOS DIRECTOS VS. APORTE CONGREGACIÓN');
     expect(cellValues).toContain('Exonerado 50%');
+    expect(cellValues).not.toContain('Tarifa Base ($)');
+    expect(cellValues).not.toContain('Tarifa Base Ref. ($)');
   });
 });

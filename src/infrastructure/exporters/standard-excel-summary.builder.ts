@@ -30,8 +30,17 @@ export function appendStandardExcelSummary(
   items: SummaryRowItem[],
   moduleTitle: string,
   titlePeriod: string,
-  subjectLabel = 'Pacientes'
+  subjectLabel = 'Pacientes',
+  options?: { showTarifaBase?: boolean }
 ): void {
+  const showTarifaBase = options?.showTarifaBase ?? (moduleTitle !== 'EXÁMENES Y LABORATORIO');
+
+  // Ensure Column B is wide enough for descriptive labels like "Aporte Fijo Congregación ($10)"
+  const colB = sheet.getColumn(2);
+  if ((colB.width ?? 0) < 38) {
+    colB.width = 38;
+  }
+
   const subjectPlural = subjectLabel.trim() || 'Pacientes';
   sheet.addRow([]); // Blank line
 
@@ -213,8 +222,14 @@ export function appendStandardExcelSummary(
     okRow.font = { italic: true, size: 9, color: { argb: 'FF15803D' } };
   }
 
-  appendExonerationExcelSummary(sheet, items, subjectPlural, {
-    totalCount: totalPatients,
-    totalFacturadoBs,
-  });
+  appendExonerationExcelSummary(
+    sheet,
+    items,
+    subjectPlural,
+    {
+      totalCount: totalPatients,
+      totalFacturadoBs,
+    },
+    { showTarifaBase }
+  );
 }

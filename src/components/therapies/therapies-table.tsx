@@ -151,7 +151,7 @@ export function TherapiesTable({
       <ExportTherapiesDialog
         open={isExportDialogOpen}
         onOpenChange={setIsExportDialogOpen}
-        therapies={filtered}
+        therapies={therapies}
         defaultStartDate={filter.startDate}
         defaultEndDate={filter.endDate}
         defaultPeriod={filter.periodLabel === 'Todo el Histórico' ? 'TODO EL HISTÓRICO' : filter.periodLabel}

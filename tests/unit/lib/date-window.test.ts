@@ -168,6 +168,19 @@ describe('date-window', () => {
 
       expect(getLatestDate(mixed)).toBe('2026-12-25');
     });
+
+    it('extracts latest date across DD/MM/YYYY, single-digit days, Date objects and ISO datetimes', () => {
+      const mixedFormats = [
+        { date: '31/10/2026' },
+        { date: '01/11/2026' },
+        { date: '11/11/2026' },
+        { date: '2026-11-2' },
+        { date: new Date('2026-11-05T12:00:00Z') },
+        { date: '2026-11-08T04:00:00.000Z' },
+      ];
+
+      expect(getLatestDate(mixedFormats)).toBe('2026-11-11');
+    });
   });
 
   describe('month constants', () => {

@@ -67,6 +67,8 @@ describe('ExcelJsConsultationExporter', () => {
 
     expect(sheet?.getRow(2).getCell(2).value).toBe('01/10/2026');
     expect(sheet?.getRow(4).getCell(2).value).toBe('15/10/2026');
+    expect(sheet?.getColumn(2).width).toBeGreaterThanOrEqual(38);
+    expect(cellValues).toContain('Tarifa Base ($)');
     expect(cellValues).toContain('CÁLCULO DE EXONERADOS Y TOTALES (COMPROMISO CONGREGACIÓN)');
     expect(cellValues).toContain('TOTAL A PAGAR POR LA CONGREGACIÓN');
     expect(cellValues).toContain('CONSOLIDADO GENERAL: INGRESOS DIRECTOS VS. APORTE CONGREGACIÓN');

@@ -13,7 +13,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
-import { buildDatePresets, PresetId } from '@/lib/date-window';
+import { buildDatePresets, getLatestDate, PresetId } from '@/lib/date-window';
+import { normalizeToIsoDate } from '@/lib/date-utils';
 import type { ConsultationItem } from './consultation-item';
 
 interface Props {
@@ -49,9 +50,13 @@ function ExportDialogForm({
   isExporting,
   referenceDate,
 }: FormProps) {
+  const resolvedRefDate = useMemo(() => {
+    return normalizeToIsoDate(referenceDate) || getLatestDate(consultations);
+  }, [referenceDate, consultations]);
+
   const { window, getPreset } = useMemo(
-    () => buildDatePresets(referenceDate),
-    [referenceDate]
+    () => buildDatePresets(resolvedRefDate),
+    [resolvedRefDate]
   );
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
