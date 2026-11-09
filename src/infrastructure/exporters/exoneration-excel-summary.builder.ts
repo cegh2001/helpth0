@@ -40,8 +40,8 @@ export function appendExonerationExcelSummary(
     'Condición de Exoneración',
     `${subjectPlural} Exonerados`,
     'Tarifa Base ($)',
-    'Total Exonerado ($)',
-    'Total Exonerado (Bs)',
+    'Total ($)',
+    'Total (Bs)',
     '% del Total Casos',
   ]);
   colsRow.font = { bold: true };
