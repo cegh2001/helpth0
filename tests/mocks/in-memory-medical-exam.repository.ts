@@ -36,7 +36,10 @@ export class InMemoryMedicalExamRepository implements MedicalExamRepository {
       );
     }
 
-    return result.sort((a, b) => a.date.localeCompare(b.date));
+    return result.sort(
+      (a, b) =>
+        a.date.localeCompare(b.date) || a.createdAt.getTime() - b.createdAt.getTime()
+    );
   }
 
   async save(exam: MedicalExam): Promise<MedicalExam> {

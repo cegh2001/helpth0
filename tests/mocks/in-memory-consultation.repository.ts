@@ -30,7 +30,10 @@ export class InMemoryConsultationRepository implements ConsultationRepository {
       result = result.filter((c) => c.doctorName.toLowerCase() === filter.doctorName!.toLowerCase());
     }
 
-    return result.sort((a, b) => a.date.localeCompare(b.date));
+    return result.sort(
+      (a, b) =>
+        a.date.localeCompare(b.date) || a.createdAt.getTime() - b.createdAt.getTime()
+    );
   }
 
   async save(consultation: Consultation): Promise<Consultation> {
