@@ -6,7 +6,7 @@ import {
   ParseMedicalExamsResult,
   ParseMedicalExamsSummary,
 } from '@/core/application/ports/medical-exam-parser.port';
-import { parseNumeric } from './consultation-exoneration.calculator';
+import { parseNumeric, resolveIndexedRowDate } from './consultation-exoneration.calculator';
 import { resolveMedicalExamAmounts } from '@/core/application/use-cases/exams/medical-exam-rate.calculator';
 import {
   parseMedicalExamsFromCsv,
@@ -79,13 +79,18 @@ export async function parseMedicalExamsFromBuffer(buffer: Buffer): Promise<Parse
 
     if (!inDataSection) return;
 
-    const firstCol = vals[1];
-    if (firstCol == null) return;
-    const isIndex = !isNaN(Number(firstCol));
-    if (!isIndex) return;
-
-    const dateStr = formatDateValue(vals[2]);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+    const dateCheck = resolveIndexedRowDate(
+      vals[1],
+      vals[2],
+      String(vals[3] || ''),
+      rowNumber
+    );
+    if (dateCheck.kind === 'skip') return;
+    if (dateCheck.kind === 'error') {
+      errors.push(dateCheck.error);
+      return;
+    }
+    const dateStr = dateCheck.date;
 
     const patientName = String(vals[3] || '').trim();
     const rawCedula = vals[4];

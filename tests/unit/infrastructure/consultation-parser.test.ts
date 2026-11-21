@@ -183,4 +183,73 @@ describe('Consultation Excel/CSV Parser', () => {
     expect(result.summary.totalExoneratedUsd).toBe(22.5);
     expect(result.summary.exoneratedPatientsCount).toBe(2);
   });
+
+  it('parses double-dot totals and reports an explicit row error on malformed indexed dates', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Control de Pago');
+    sheet.addRow([
+      '#',
+      'Fecha',
+      'Nombre y Apellido',
+      'Cedula',
+      'Direccion',
+      'Telefono',
+      'Medicos',
+      'Consulta',
+      'Punto',
+      'Pago Movil',
+      'Efectivo',
+      'Tasa BCV',
+      'Divisas',
+      'TOTAL',
+      'Observaciones',
+    ]);
+    sheet.addRow([
+      1,
+      '6/11/26',
+      'JUSTINA RUJANO',
+      '9263474',
+      'CARABALLEDA',
+      '4129426854',
+      'DRA MAILET CONTRERA',
+      'TRAUMATOLOGIA',
+      '11.219,12',
+      null,
+      null,
+      '897.53',
+      '12.50',
+      '22.438.24',
+      'COMPLETO',
+    ]);
+    sheet.addRow([
+      2,
+      'FECHA MALA',
+      'PACIENTE INVALIDO',
+      '12345678',
+      'CARABALLEDA',
+      '4120000000',
+      'DRA MAILET CONTRERA',
+      'TRAUMATOLOGIA',
+      '4487.65',
+      null,
+      null,
+      '897.53',
+      '5',
+      '4487.65',
+      'COMPLETO',
+    ]);
+
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+    const result = await parseConsultationsFromBuffer(buffer);
+
+    expect(result.consultations).toHaveLength(1);
+    expect(result.consultations[0].date).toBe('2026-11-06');
+    expect(result.consultations[0].totalBs).toBe(22438.24);
+    expect(result.errors).toStrictEqual([
+      {
+        rowNumber: 3,
+        message: 'Fecha inválida o mal formateada ("FECHA MALA") para PACIENTE INVALIDO',
+      },
+    ]);
+  });
 });

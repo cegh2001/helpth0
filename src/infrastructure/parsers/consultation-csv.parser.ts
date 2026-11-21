@@ -7,6 +7,7 @@ import {
   parseNumeric,
   computeExoneration,
   buildConsultationsSummary,
+  resolveIndexedRowDate,
 } from './consultation-exoneration.calculator';
 
 export function parseConsultationsFromCsv(csvText: string): ParseConsultationsResult {
@@ -44,13 +45,18 @@ export function parseConsultationsFromCsv(csvText: string): ParseConsultationsRe
 
     if (!inDataSection) continue;
 
-    const isIndex = /^\d+$/.test(firstCol);
-    const dateCandidate = parts[1] ?? '';
-    const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(dateCandidate);
-
-    if (!isIndex || !isValidDate) {
+    const dateCheck = resolveIndexedRowDate(
+      parts[0],
+      parts[1] ?? '',
+      parts[2] ?? '',
+      rowNumber
+    );
+    if (dateCheck.kind === 'skip') continue;
+    if (dateCheck.kind === 'error') {
+      errors.push(dateCheck.error);
       continue;
     }
+    const dateCandidate = dateCheck.date;
 
     const patientName = parts[2] ?? '';
     const cedula = parts[3] ? parts[3].replace(/[^\d]/g, '') : null;

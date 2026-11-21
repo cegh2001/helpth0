@@ -93,5 +93,24 @@ describe('Date Utilities (Local Timezone Safe)', () => {
       expect(normalizeToIsoDate('')).toBe('');
       expect(normalizeToIsoDate(null)).toBe('');
     });
+
+    it('normalizes 2-digit years, dot separators, unambiguous MM/DD/YYYY, Excel serials, and ExcelJS objects', () => {
+      expect(normalizeToIsoDate('6/11/26')).toBe('2026-11-06');
+      expect(normalizeToIsoDate('06-11-26')).toBe('2026-11-06');
+      expect(normalizeToIsoDate('28/03/73')).toBe('1973-03-28');
+      expect(normalizeToIsoDate('06.11.2026')).toBe('2026-11-06');
+      expect(normalizeToIsoDate('11/28/2026')).toBe('2026-11-28');
+      expect(normalizeToIsoDate(46332)).toBe('2026-11-06');
+      expect(
+        normalizeToIsoDate({ formula: 'A1', result: new Date('2026-11-06T00:00:00.000Z') })
+      ).toBe('2026-11-06');
+      expect(normalizeToIsoDate({ richText: [{ text: '06/11/2026' }] })).toBe('2026-11-06');
+    });
+
+    it('rejects impossible calendar dates and non-date strings', () => {
+      expect(normalizeToIsoDate('31/02/2026')).toBe('');
+      expect(normalizeToIsoDate('32/13/2026')).toBe('');
+      expect(normalizeToIsoDate('texto')).toBe('');
+    });
   });
 });

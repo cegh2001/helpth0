@@ -8,12 +8,12 @@ import {
 import {
   computeExoneration,
   parseNumeric,
+  resolveIndexedRowDate,
 } from './consultation-exoneration.calculator';
 import {
   buildTherapiesSummary,
   parseTherapiesFromCsv,
 } from './therapy-csv.parser';
-import { normalizeToIsoDate } from '@/lib/date-utils';
 
 export {
   type ParseTherapyRowError,
@@ -21,10 +21,6 @@ export {
   type ParseTherapiesSummary,
 } from '@/core/application/ports/therapy-parser.port';
 export { parseTherapiesFromCsv } from './therapy-csv.parser';
-
-function formatDateValue(val: unknown): string {
-  return normalizeToIsoDate(val);
-}
 
 function readTotalCell(val: unknown): number {
   if (val && typeof val === 'object' && 'result' in (val as Record<string, unknown>)) {
@@ -79,14 +75,18 @@ export async function parseTherapiesFromBuffer(buffer: Buffer): Promise<ParseThe
 
     if (!inDataSection) return;
 
-    const firstCol = vals[1];
-    if (firstCol == null || isNaN(Number(firstCol))) return;
-
-    const dateStr = formatDateValue(vals[2]);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
-
     const therapistName = String(vals[3] ?? '').trim();
     const specialty = String(vals[4] ?? '').trim();
+    const subjectLabel = therapistName && specialty ? `${therapistName} (${specialty})` : '';
+
+    const dateCheck = resolveIndexedRowDate(vals[1], vals[2], subjectLabel, rowNumber);
+    if (dateCheck.kind === 'skip') return;
+    if (dateCheck.kind === 'error') {
+      errors.push(dateCheck.error);
+      return;
+    }
+    const dateStr = dateCheck.date;
+    const firstCol = vals[1];
 
     if (!therapistName || !specialty) {
       errors.push({

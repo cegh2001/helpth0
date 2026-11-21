@@ -4,8 +4,9 @@ import {
   ParseMedicalExamsResult,
   ParseMedicalExamsSummary,
 } from '@/core/application/ports/medical-exam-parser.port';
-import { parseNumeric } from './consultation-exoneration.calculator';
+import { parseNumeric, resolveIndexedRowDate } from './consultation-exoneration.calculator';
 import { resolveMedicalExamAmounts } from '@/core/application/use-cases/exams/medical-exam-rate.calculator';
+import { normalizeToIsoDate } from '@/lib/date-utils';
 
 export function splitCsvLine(line: string): string[] {
   const result: string[] = [];
@@ -99,17 +100,22 @@ export function parseMedicalExamsFromCsv(csvText: string): ParseMedicalExamsResu
 
     if (!inDataSection) continue;
 
-    const isIndex = /^\d+$/.test(firstCol);
-    const dateCandidate = parts[1] ?? '';
-    const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(dateCandidate);
-
-    if (!isIndex || !isValidDate) {
+    const dateCheck = resolveIndexedRowDate(
+      parts[0],
+      parts[1] ?? '',
+      parts[2] ?? '',
+      rowNumber
+    );
+    if (dateCheck.kind === 'skip') continue;
+    if (dateCheck.kind === 'error') {
+      errors.push(dateCheck.error);
       continue;
     }
+    const dateCandidate = dateCheck.date;
 
     const patientName = parts[2] ?? '';
     const cedula = parts[3] ? parts[3].replace(/[^\d]/g, '') : null;
-    const birthDate = parts[4] && /^\d{4}-\d{2}-\d{2}$/.test(parts[4]) ? parts[4] : null;
+    const birthDate = normalizeToIsoDate(parts[4] ?? '') || null;
     const phone = parts[5] || null;
     const address = parts[6] || null;
     const examName = parts[7] || null;

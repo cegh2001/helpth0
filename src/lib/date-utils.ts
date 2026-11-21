@@ -29,33 +29,86 @@ export function formatDisplayDate(dateStr: string | null | undefined): string {
   return trimmed;
 }
 
+function isValidCalendarParts(year: number, month: number, day: number): boolean {
+  if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return false;
+  }
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  return (
+    utc.getUTCFullYear() === year &&
+    utc.getUTCMonth() === month - 1 &&
+    utc.getUTCDate() === day
+  );
+}
+
+function formatCalendarIso(year: number, month: number, day: number): string {
+  if (!isValidCalendarParts(year, month, day)) return '';
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 /**
- * Normalizes any incoming date value (ISO string 'YYYY-MM-DD', 'DD/MM/YYYY', 'DD-MM-YYYY', or Date object)
- * into a canonical 'YYYY-MM-DD' calendar date string.
+ * Normalizes any incoming date value (ISO string 'YYYY-MM-DD', 'DD/MM/YYYY', 'DD/MM/YY',
+ * 'DD.MM.YYYY', unambiguous 'MM/DD/YYYY', Excel serial numbers, Date objects, or ExcelJS
+ * formula/richText cell objects) into a canonical 'YYYY-MM-DD' calendar date string.
  * Returns empty string if invalid or empty.
  */
 export function normalizeToIsoDate(val: unknown): string {
-  if (!val) return '';
+  if (val == null || val === '') return '';
   if (val instanceof Date) {
     return isNaN(val.getTime()) ? '' : val.toISOString().slice(0, 10);
   }
+  if (typeof val === 'number') {
+    if (!Number.isFinite(val) || val < 1000 || val >= 100000) return '';
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+  }
+  if (typeof val === 'object') {
+    const record = val as Record<string, unknown>;
+    if ('result' in record) return normalizeToIsoDate(record.result);
+    if ('richText' in record && Array.isArray(record.richText)) {
+      const text = record.richText
+        .map((part) =>
+          part && typeof part === 'object' && 'text' in part
+            ? String((part as Record<string, unknown>).text ?? '')
+            : ''
+        )
+        .join('');
+      return normalizeToIsoDate(text);
+    }
+    if ('text' in record && typeof record.text === 'string') {
+      return normalizeToIsoDate(record.text);
+    }
+    return '';
+  }
+
   const str = String(val).trim();
-  // Match YYYY-MM-DD or YYYY/MM/DD (allowing 1 or 2 digits, with optional trailing text/time)
-  const ymdMatch = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/.exec(str);
+  const ymdMatch = /^(\d{4})[./-](\d{1,2})[./-](\d{1,2})(?:\b|T|\s|$)/.exec(str);
   if (ymdMatch) {
-    const year = ymdMatch[1];
-    const month = ymdMatch[2].padStart(2, '0');
-    const day = ymdMatch[3].padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return formatCalendarIso(
+      parseInt(ymdMatch[1], 10),
+      parseInt(ymdMatch[2], 10),
+      parseInt(ymdMatch[3], 10)
+    );
   }
-  // Match DD/MM/YYYY or DD-MM-YYYY (allowing 1 or 2 digits, with optional trailing text/time)
-  const dmyMatch = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/.exec(str);
+
+  const dmyMatch = /^(\d{1,2})[./-](\d{1,2})[./-](\d{2}|\d{4})(?:\b|T|\s|$)/.exec(str);
   if (dmyMatch) {
-    const day = dmyMatch[1].padStart(2, '0');
-    const month = dmyMatch[2].padStart(2, '0');
-    const year = dmyMatch[3];
-    return `${year}-${month}-${day}`;
+    const first = parseInt(dmyMatch[1], 10);
+    const second = parseInt(dmyMatch[2], 10);
+    const rawYear = dmyMatch[3];
+    const year =
+      rawYear.length === 2
+        ? parseInt(rawYear, 10) <= 49
+          ? 2000 + parseInt(rawYear, 10)
+          : 1900 + parseInt(rawYear, 10)
+        : parseInt(rawYear, 10);
+
+    // Default to LatAm DD/MM, switching to MM/DD only when the second field exceeds 12.
+    const [day, month] =
+      first <= 12 && second > 12 && second <= 31 ? [second, first] : [first, second];
+    return formatCalendarIso(year, month, day);
   }
+
   return '';
 }
 

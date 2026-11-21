@@ -1,5 +1,74 @@
 import { Consultation } from '@/core/domain/entities/consultation.entity';
 import { ParseConsultationsSummary } from '@/core/application/ports/consultation-parser.port';
+import { normalizeToIsoDate } from '@/lib/date-utils';
+
+export type IndexedRowDateResult =
+  | { kind: 'skip' }
+  | { kind: 'valid'; date: string }
+  | { kind: 'error'; error: { rowNumber: number; message: string } };
+
+function formatRawDateLabel(rawDate: unknown): string {
+  if (rawDate == null) return '';
+  if (rawDate instanceof Date) {
+    return isNaN(rawDate.getTime()) ? 'Fecha inválida' : rawDate.toISOString();
+  }
+  if (typeof rawDate === 'object') {
+    const record = rawDate as Record<string, unknown>;
+    if ('result' in record) return formatRawDateLabel(record.result);
+    if ('richText' in record && Array.isArray(record.richText)) {
+      return record.richText
+        .map((p) =>
+          p && typeof p === 'object' && 'text' in p
+            ? String((p as Record<string, unknown>).text ?? '')
+            : ''
+        )
+        .join('')
+        .trim();
+    }
+    if ('text' in record && typeof record.text === 'string') return record.text.trim();
+  }
+  return String(rawDate).trim();
+}
+
+export function resolveIndexedRowDate(
+  rawIndex: unknown,
+  rawDate: unknown,
+  subjectLabel: string,
+  rowNumber: number
+): IndexedRowDateResult {
+  const indexStr = rawIndex == null ? '' : String(rawIndex).trim();
+  if (!/^\d+$/.test(indexStr)) {
+    return { kind: 'skip' };
+  }
+
+  const dateStr = normalizeToIsoDate(rawDate);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return { kind: 'valid', date: dateStr };
+  }
+
+  const subject = subjectLabel.trim();
+  if (!subject) {
+    return { kind: 'skip' };
+  }
+
+  return {
+    kind: 'error',
+    error: {
+      rowNumber,
+      message: `Fecha inválida o mal formateada ("${formatRawDateLabel(rawDate)}") para ${subject}`,
+    },
+  };
+}
+
+function parseMultiSeparator(clean: string, separator: '.' | ','): number {
+  const parts = clean.split(separator);
+  const last = parts[parts.length - 1] ?? '';
+  const head = parts.slice(0, -1).join('');
+  // Preserve 1-2 trailing decimal digits (e.g. "22.438.24" -> "22438.24"); otherwise treat all as thousands separators.
+  const normalized = /^\d{1,2}$/.test(last) ? `${head}.${last}` : parts.join('');
+  const num = parseFloat(normalized);
+  return isNaN(num) ? 0 : num;
+}
 
 export function parseNumeric(val: unknown): number {
   if (val == null) return 0;
@@ -20,6 +89,14 @@ export function parseNumeric(val: unknown): number {
       const num = parseFloat(normalized);
       return isNaN(num) ? 0 : num;
     }
+  }
+
+  if (clean.split('.').length > 2) {
+    return parseMultiSeparator(clean, '.');
+  }
+
+  if (clean.split(',').length > 2) {
+    return parseMultiSeparator(clean, ',');
   }
 
   if (clean.includes(',')) {

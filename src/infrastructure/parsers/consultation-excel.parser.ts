@@ -10,9 +10,9 @@ import {
   parseNumeric,
   computeExoneration,
   buildConsultationsSummary,
+  resolveIndexedRowDate,
 } from './consultation-exoneration.calculator';
 import { parseConsultationsFromCsv } from './consultation-csv.parser';
-import { normalizeToIsoDate } from '@/lib/date-utils';
 
 export {
   type ParseConsultationRowError,
@@ -72,13 +72,18 @@ export async function parseConsultationsFromBuffer(buffer: Buffer): Promise<Pars
 
     if (!inDataSection) return;
 
-    const firstCol = vals[1];
-    if (firstCol == null) return;
-    const isIndex = !isNaN(Number(firstCol));
-    if (!isIndex) return;
-
-    const dateStr = normalizeToIsoDate(vals[2]);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+    const dateCheck = resolveIndexedRowDate(
+      vals[1],
+      vals[2],
+      String(vals[3] || ''),
+      rowNumber
+    );
+    if (dateCheck.kind === 'skip') return;
+    if (dateCheck.kind === 'error') {
+      errors.push(dateCheck.error);
+      return;
+    }
+    const dateStr = dateCheck.date;
 
     const patientName = String(vals[3] || '').trim();
     const rawCedula = vals[4];
